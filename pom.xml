@@ -5,11 +5,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.snower</groupId>
-  <artifactId>slock</artifactId>
+  <artifactId>jaslock</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>slock</name>
+  <name>jaslock</name>
   <description>High-performance distributed sync service and atomic DB. Provides good multi-core support through lock queues, high-performance asynchronous binary network protocols. Can be used for spikes, synchronization, event notification, concurrency control. https://github.com/snower/slock</description>
   <url>https://github.com/snower/slock</url>
   <licenses>
@@ -30,6 +30,14 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
   </properties>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub snower Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/snower/jaslock</url>
+    </repository>
+  </distributionManagement>
 
   <dependencies>
     <dependency>
