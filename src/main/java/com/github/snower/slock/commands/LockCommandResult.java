@@ -79,11 +79,11 @@ public class LockCommandResult extends CommandResult {
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
-        byteArrayOutputStream.writeBytes(requestId);
+        byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(flag);
         byteArrayOutputStream.write(dbId);
-        byteArrayOutputStream.writeBytes(lockId);
-        byteArrayOutputStream.writeBytes(lockKey);
+        byteArrayOutputStream.write(lockId, 0, 16);
+        byteArrayOutputStream.write(lockKey, 0, 16);
         byteArrayOutputStream.write(lCount & 0xff);
         byteArrayOutputStream.write((lCount >> 8) & 0xff);
         byteArrayOutputStream.write(count & 0xff);

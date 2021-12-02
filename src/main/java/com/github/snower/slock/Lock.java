@@ -5,6 +5,8 @@ import com.github.snower.slock.commands.LockCommand;
 import com.github.snower.slock.commands.LockCommandResult;
 import com.github.snower.slock.exceptions.*;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Lock {
@@ -19,7 +21,12 @@ public class Lock {
     public Lock(Database database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
         this.database = database;
         if(lockKey.length > 16) {
-            this.lockKey = Arrays.copyOfRange(lockKey, 0, 16);
+            try {
+                MessageDigest digest = MessageDigest.getInstance("MD5");
+                this.lockKey = digest.digest(lockKey);
+            } catch (NoSuchAlgorithmException e) {
+                this.lockKey = Arrays.copyOfRange(lockKey, 0, 16);
+            }
         } else {
             this.lockKey = new byte[16];
             System.arraycopy(lockKey, 0, this.lockKey, 16 - lockKey.length, lockKey.length);
@@ -28,10 +35,15 @@ public class Lock {
             this.lockId = LockCommand.genLockId();
         } else {
             if(lockId.length > 16) {
-                this.lockId = Arrays.copyOfRange(lockId, 0, 16);
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("MD5");
+                    this.lockId = digest.digest(lockId);
+                } catch (NoSuchAlgorithmException e) {
+                    this.lockId = Arrays.copyOfRange(lockId, 0, 16);
+                }
             } else {
                 this.lockId = new byte[16];
-                System.arraycopy(lockId, 0, this.lockKey, 16 - lockId.length, lockId.length);
+                System.arraycopy(lockId, 0, this.lockId, 16 - lockId.length, lockId.length);
             }
         }
         this.timeout = timeout;

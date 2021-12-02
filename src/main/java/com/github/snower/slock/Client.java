@@ -15,25 +15,25 @@ import java.util.HashMap;
 public class Client implements Runnable, IClient {
     private String host;
     private int port;
-    private boolean closed = false;
-    private Thread thread = null;
-    private Socket socket = null;
-    private InputStream inputStream = null;
-    private OutputStream outputStream = null;
+    private boolean closed;
+    private Thread thread;
+    private Socket socket;
+    private InputStream inputStream;
+    private OutputStream outputStream;
     private Database[] databases;
     private HashMap<String, Command> requests;
-    private ReplsetClient replsetClient = null;
+    private ReplsetClient replsetClient;
 
     public Client(String host, int port) {
         this.host = host;
         this.port = port;
         this.databases = new Database[256];
         this.requests = new HashMap<>();
+        this.closed = false;
     }
 
     public Client(String host, int port, ReplsetClient replsetClient, Database[] databases) {
-        this.host = host;
-        this.port = port;
+        this(host, port);
         this.replsetClient = replsetClient;
         this.databases = databases;
         this.requests = new HashMap<>();
@@ -89,24 +89,32 @@ public class Client implements Runnable, IClient {
     public void run() {
         try {
             while (!closed) {
-                byte[] buf = new byte[64];
-                while (!closed && socket != null) {
-                    try {
-                        int n = inputStream.readNBytes(buf, 0, 64);
-                        if (n < 64) {
+                try {
+                    byte[] buf = new byte[64];
+                    while (!closed && socket != null) {
+                        try {
+                            int n = inputStream.readNBytes(buf, 0, 64);
+                            if (n < 64) {
+                                break;
+                            }
+                        } catch (IOException ignored) {
                             break;
                         }
-                    } catch (IOException ignored) {
-                    }
 
-                    switch (buf[2]) {
-                        case ICommand.COMMAND_TYPE_LOCK:
-                        case ICommand.COMMAND_TYPE_UNLOCK:
-                            LockCommandResult lockCommandResult = new LockCommandResult();
-                            if (lockCommandResult.parseCommand(buf) != null) {
-                                handleCommand(lockCommandResult);
-                            }
-                            break;
+                        switch (buf[2]) {
+                            case ICommand.COMMAND_TYPE_LOCK:
+                            case ICommand.COMMAND_TYPE_UNLOCK:
+                                LockCommandResult lockCommandResult = new LockCommandResult();
+                                if (lockCommandResult.parseCommand(buf) != null) {
+                                    handleCommand(lockCommandResult);
+                                }
+                                break;
+                        }
+                    }
+                } catch (Exception ignored) {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ignored1) {
                     }
                 }
 
@@ -163,11 +171,13 @@ public class Client implements Runnable, IClient {
     }
 
     protected void reconnect() {
-        for(Command command : requests.values()) {
-            command.commandResult = null;
-            command.wakeupWaiter();
+        synchronized (this) {
+            for (Command command : requests.values()) {
+                command.commandResult = null;
+                command.wakeupWaiter();
+            }
+            requests = new HashMap<>();
         }
-        requests = new HashMap<>();
 
         while (!closed) {
             try {
@@ -183,7 +193,7 @@ public class Client implements Runnable, IClient {
     }
 
     protected void handleCommand(CommandResult commandResult) {
-        Command command = null;
+        Command command;
         String requestId = new String(commandResult.getRequestId());
         synchronized (this) {
             if (!requests.containsKey(requestId)) {

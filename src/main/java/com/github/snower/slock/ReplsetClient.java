@@ -13,13 +13,14 @@ public class ReplsetClient implements IClient {
     private String[] hosts;
     private LinkedList<Client> clients;
     private LinkedList<Client> livedClients;
-    private boolean closed = false;
+    private boolean closed;
     private Database[] databases;
 
     public ReplsetClient(String[] hosts) {
         this.hosts = hosts;
         this.clients = new LinkedList<>();
         this.livedClients = new LinkedList<>();
+        this.closed = false;
         this.databases = new Database[256];
     }
 

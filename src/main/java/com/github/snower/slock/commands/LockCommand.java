@@ -102,11 +102,11 @@ public class LockCommand extends Command {
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
-        byteArrayOutputStream.writeBytes(requestId);
+        byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(flag);
         byteArrayOutputStream.write(dbId);
-        byteArrayOutputStream.writeBytes(lockId);
-        byteArrayOutputStream.writeBytes(lockKey);
+        byteArrayOutputStream.write(lockId, 0, 16);
+        byteArrayOutputStream.write(lockKey, 0, 16);
         byteArrayOutputStream.write(timeout & 0xff);
         byteArrayOutputStream.write((timeout >> 8) & 0xff);
         byteArrayOutputStream.write((timeout >> 16) & 0xff);

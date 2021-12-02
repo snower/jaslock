@@ -61,7 +61,7 @@ public class Command implements ICommand {
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
-        byteArrayOutputStream.writeBytes(requestId);
+        byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.writeBytes(new byte[45]);
         return byteArrayOutputStream.toByteArray();
     }
