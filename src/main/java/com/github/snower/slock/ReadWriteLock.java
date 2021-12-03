@@ -1,8 +1,6 @@
 package com.github.snower.slock;
 
-import com.github.snower.slock.commands.ICommand;
 import com.github.snower.slock.commands.LockCommand;
-import com.github.snower.slock.exceptions.LockLockedException;
 import com.github.snower.slock.exceptions.SlockException;
 
 import java.security.MessageDigest;
