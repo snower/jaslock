@@ -15,6 +15,10 @@ public class ReplsetClient implements IClient {
     private boolean closed;
     private Database[] databases;
 
+    public ReplsetClient(String hosts) {
+        this(hosts.split(","));
+    }
+
     public ReplsetClient(String[] hosts) {
         this.hosts = hosts;
         this.clients = new LinkedList<>();

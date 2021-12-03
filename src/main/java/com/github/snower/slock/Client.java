@@ -23,6 +23,14 @@ public class Client implements Runnable, IClient {
     private ConcurrentHashMap<String, Command> requests;
     private ReplsetClient replsetClient;
 
+    public Client() {
+        this("127.0.0.1", 5658);
+    }
+
+    public Client(String host) {
+        this(host, 5658);
+    }
+
     public Client(String host, int port) {
         this.host = host;
         this.port = port;
