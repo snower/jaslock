@@ -6,9 +6,10 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LockCommand extends Command {
-    private static volatile int lockIdIndex;
+    private static final AtomicInteger lockIdIndex = new AtomicInteger(0);
 
     protected byte flag;
     protected byte dbId;
@@ -125,7 +126,7 @@ public class LockCommand extends Command {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         long timestamp = (new Date()).getTime();
         long randNumber = (new Random()).nextLong();
-        long ri = (++lockIdIndex) & 0x7fffffffL;
+        long ri = ((long) lockIdIndex.addAndGet(1)) & 0x7fffffffL;
         byteArrayOutputStream.write((byte) (timestamp >> 40) & 0xff);
         byteArrayOutputStream.write((byte) (timestamp >> 32) & 0xff);
         byteArrayOutputStream.write((byte) (timestamp >> 24) & 0xff);

@@ -1,34 +1,33 @@
 package com.github.snower.slock;
 
-import com.github.snower.slock.commands.ICommand;
-import com.github.snower.slock.commands.Command;
-import com.github.snower.slock.commands.CommandResult;
-import com.github.snower.slock.commands.LockCommandResult;
+import com.github.snower.slock.commands.*;
 import com.github.snower.slock.exceptions.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Client implements Runnable, IClient {
     private String host;
     private int port;
     private boolean closed;
+    private byte[] clientId;
     private Thread thread;
     private Socket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
     private Database[] databases;
-    private HashMap<String, Command> requests;
+    private ConcurrentHashMap<String, Command> requests;
     private ReplsetClient replsetClient;
 
     public Client(String host, int port) {
         this.host = host;
         this.port = port;
         this.databases = new Database[256];
-        this.requests = new HashMap<>();
+        this.requests = new ConcurrentHashMap<>();
         this.closed = false;
     }
 
@@ -36,7 +35,7 @@ public class Client implements Runnable, IClient {
         this(host, port);
         this.replsetClient = replsetClient;
         this.databases = databases;
-        this.requests = new HashMap<>();
+        this.requests = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -70,17 +69,20 @@ public class Client implements Runnable, IClient {
         }
 
         synchronized (this) {
-            for(Command command : requests.values()) {
+            for(Object requestId : requests.keySet().toArray()) {
+                Command command = requests.remove((String) requestId);
+                if(command == null) {
+                    continue;
+                }
                 command.commandResult = null;
                 command.wakeupWaiter();
             }
-            requests = new HashMap<>();
 
-            for(Database database : databases) {
-                if(database != null ) {
-                    database.close();
+            for(int i = 0; i < databases.length; i++) {
+                if(databases[i] != null ) {
+                    databases[i].close();
                 }
-                databases = new Database[256];
+                databases[i] = null;
             }
         }
     }
@@ -118,65 +120,45 @@ public class Client implements Runnable, IClient {
                     }
                 }
 
-                if (socket != null) {
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {
-                    }
-                    socket = null;
-                    inputStream = null;
-                    outputStream = null;
-                    if (replsetClient != null) {
-                        replsetClient.removeLivedClient(this);
-                    }
-                }
+                closeSocket();
                 reconnect();
             }
         } finally {
-            if(socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException ignored) {
-                }
-                socket = null;
-                inputStream = null;
-                outputStream = null;
-                if(replsetClient != null) {
-                    replsetClient.removeLivedClient(this);
-                }
-            }
+            closeSocket();
             thread = null;
         }
         replsetClient = null;
     }
 
     protected void connect() throws IOException {
-        socket = new Socket(host, port);
+        socket = new Socket();
+        socket.setKeepAlive(true);
+        socket.setTcpNoDelay(true);
+        socket.connect(new InetSocketAddress(host, port), 5000);
         try {
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
-            if(replsetClient != null) {
-                replsetClient.addLivedClient(this);
-            }
         } catch (IOException e) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-            socket = null;
-            inputStream = null;
-            outputStream = null;
+            closeSocket();
             throw e;
+        }
+
+        initClient();
+        if(replsetClient != null) {
+            replsetClient.addLivedClient(this);
         }
     }
 
     protected void reconnect() {
         synchronized (this) {
-            for (Command command : requests.values()) {
+            for(Object requestId : requests.keySet().toArray()) {
+                Command command = requests.remove((String) requestId);
+                if(command == null) {
+                    continue;
+                }
                 command.commandResult = null;
                 command.wakeupWaiter();
             }
-            requests = new HashMap<>();
         }
 
         while (!closed) {
@@ -192,15 +174,62 @@ public class Client implements Runnable, IClient {
         }
     }
 
+    protected void closeSocket() {
+        synchronized (this) {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
+                socket = null;
+                inputStream = null;
+                outputStream = null;
+                if (replsetClient != null) {
+                    replsetClient.removeLivedClient(this);
+                }
+            }
+        }
+    }
+
+    protected void initClient() throws IOException {
+        if(clientId == null) {
+            clientId = InitCommand.genClientId();
+        }
+        InitCommand initCommand = new InitCommand(clientId);
+        byte[] buf = initCommand.dumpCommand();
+        try {
+            outputStream.write(buf);
+        } catch (IOException e) {
+            closeSocket();
+            throw e;
+        }
+
+        try {
+            int n = inputStream.readNBytes(buf, 0, 64);
+            if (n < 64) {
+                throw new IOException("read result error");
+            }
+            InitResultCommand initResultCommand = new InitResultCommand();
+            if (initResultCommand.parseCommand(buf) != null) {
+                if(initResultCommand.getResult() != ICommand.COMMAND_RESULT_SUCCED) {
+                    throw new IOException("init commnad error");
+                }
+            }
+        } catch (IOException e) {
+            closeSocket();
+            throw e;
+        }
+    }
+
     protected void handleCommand(CommandResult commandResult) {
         Command command;
         String requestId = new String(commandResult.getRequestId());
-        synchronized (this) {
-            if (!requests.containsKey(requestId)) {
-                return;
-            }
-
-            command = requests.remove(requestId);
+        if (!requests.containsKey(requestId)) {
+            return;
+        }
+        command = requests.remove(requestId);
+        if(command == null) {
+            return;
         }
         command.commandResult = commandResult;
         command.wakeupWaiter();
@@ -228,14 +257,16 @@ public class Client implements Runnable, IClient {
                 outputStream.write(buf);
             } catch (IOException e) {
                 requests.remove(requestId);
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
                 throw new ClientOutputStreamException();
             }
         }
 
         if(!command.waiteWaiter()) {
-            synchronized (this) {
-                requests.remove(requestId);
-            }
+            requests.remove(requestId);
             throw new ClientCommandTimeoutException();
         }
 
@@ -265,5 +296,30 @@ public class Client implements Runnable, IClient {
     @Override
     public Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
+    }
+
+    @Override
+    public ReentrantLock newReentrantLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReentrantLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public ReadWriteLock newReadWriteLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReadWriteLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public Semaphore newSemaphore(byte[] semaphoreKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newSemaphore(semaphoreKey, count, timeout, expried);
+    }
+
+    @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
     }
 }

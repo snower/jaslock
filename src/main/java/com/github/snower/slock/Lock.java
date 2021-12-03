@@ -1,5 +1,6 @@
 package com.github.snower.slock;
 
+import com.github.snower.slock.commands.CommandResult;
 import com.github.snower.slock.commands.ICommand;
 import com.github.snower.slock.commands.LockCommand;
 import com.github.snower.slock.commands.LockCommandResult;
@@ -106,5 +107,26 @@ public class Lock {
 
     public void release() throws SlockException {
         release((byte) 0);
+    }
+
+    public CommandResult show() throws SlockException {
+        try {
+            acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED);
+        } catch (LockNotOwnException e) {
+            return e.getCommandResult();
+        }
+        return null;
+    }
+
+    public void update() throws SlockException {
+        try {
+            acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+        } catch (LockLockedException ignored) {
+        }
+    }
+
+    public void releaseHead() throws SlockException {
+        Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
+        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED);
     }
 }

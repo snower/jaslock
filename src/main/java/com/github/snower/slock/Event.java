@@ -3,6 +3,8 @@ package com.github.snower.slock;
 import com.github.snower.slock.commands.ICommand;
 import com.github.snower.slock.exceptions.*;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Event {
@@ -18,7 +20,12 @@ public class Event {
     public Event(Database database, byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         this.database = database;
         if(eventKey.length > 16) {
-            this.eventKey = Arrays.copyOfRange(eventKey, 0, 16);
+            try {
+                MessageDigest digest = MessageDigest.getInstance("MD5");
+                this.eventKey = digest.digest(eventKey);
+            } catch (NoSuchAlgorithmException e) {
+                this.eventKey = Arrays.copyOfRange(eventKey, 0, 16);
+            }
         } else {
             this.eventKey = new byte[16];
             System.arraycopy(eventKey, 0, this.eventKey, 16 - eventKey.length, eventKey.length);

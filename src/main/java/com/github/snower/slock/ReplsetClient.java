@@ -93,4 +93,30 @@ public class ReplsetClient implements IClient {
     public Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
     }
+
+
+    @Override
+    public ReentrantLock newReentrantLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReentrantLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public ReadWriteLock newReadWriteLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReadWriteLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public Semaphore newSemaphore(byte[] semaphoreKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newSemaphore(semaphoreKey, count, timeout, expried);
+    }
+
+    @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
+    }
 }

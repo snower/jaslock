@@ -28,4 +28,24 @@ public class Database {
     public Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         return new Event(this, eventKey, timeout, expried, defaultSeted);
     }
+
+    public ReentrantLock newReentrantLock(byte[] lockKey, int timeout, int expried) {
+        return new ReentrantLock(this, lockKey, timeout, expried);
+    }
+
+    public ReadWriteLock newReadWriteLock(byte[] lockKey, int timeout, int expried) {
+        return new ReadWriteLock(this, lockKey, timeout, expried);
+    }
+
+    public Semaphore newSemaphore(byte[] semaphoreKey, short count, int timeout, int expried) {
+        return new Semaphore(this, semaphoreKey, count, timeout, expried);
+    }
+
+    public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried) {
+        return new MaxConcurrentFlow(this, flowKey, count, timeout, expried);
+    }
+
+    public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
+        return new TokenBucketFlow(this, flowKey, count, timeout, period);
+    }
 }

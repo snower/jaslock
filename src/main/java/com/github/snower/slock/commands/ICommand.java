@@ -3,6 +3,7 @@ package com.github.snower.slock.commands;
 public interface ICommand {
     public final static byte MAGIC = 0x56;
     public final static byte VERSION = 0x01;
+    public final static byte COMMAND_TYPE_INIT = 0x00;
     public final static byte COMMAND_TYPE_LOCK = 0x01;
     public final static byte COMMAND_TYPE_UNLOCK = 0x02;
 
