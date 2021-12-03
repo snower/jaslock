@@ -1,7 +1,6 @@
 package com.github.snower.slock;
 
-import com.github.snower.slock.commands.Command;
-import com.github.snower.slock.commands.CommandResult;
+import com.github.snower.slock.commands.*;
 import com.github.snower.slock.exceptions.ClientClosedException;
 import com.github.snower.slock.exceptions.ClientUnconnectException;
 import com.github.snower.slock.exceptions.SlockException;
@@ -70,6 +69,16 @@ public class ReplsetClient implements IClient {
         } catch (NoSuchElementException e) {
             throw new ClientUnconnectException();
         }
+    }
+
+    @Override
+    public boolean ping() throws SlockException {
+        PingCommand pingCommand = new PingCommand();
+        PingResultCommand pingResultCommand = (PingResultCommand) sendCommand(pingCommand);
+        if (pingResultCommand != null && pingResultCommand.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
+            return true;
+        }
+        return false;
     }
 
     @Override

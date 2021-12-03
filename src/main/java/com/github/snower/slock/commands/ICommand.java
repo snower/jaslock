@@ -6,6 +6,7 @@ public interface ICommand {
     public final static byte COMMAND_TYPE_INIT = 0x00;
     public final static byte COMMAND_TYPE_LOCK = 0x01;
     public final static byte COMMAND_TYPE_UNLOCK = 0x02;
+    public final static byte COMMAND_TYPE_PING = 0x05;
 
     public final static byte COMMAND_RESULT_SUCCED = 0x00;
     public final static byte COMMAND_RESULT_UNKNOWN_MAGIC = 0x01;

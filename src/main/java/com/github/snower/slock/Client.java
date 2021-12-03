@@ -111,6 +111,12 @@ public class Client implements Runnable, IClient {
                                     handleCommand(lockCommandResult);
                                 }
                                 break;
+                            case ICommand.COMMAND_TYPE_PING:
+                                PingResultCommand pingResultCommand = new PingResultCommand();
+                                if (pingResultCommand.parseCommand(buf) != null) {
+                                    handleCommand(pingResultCommand);
+                                }
+                                break;
                         }
                     }
                 } catch (Exception ignored) {
@@ -274,6 +280,16 @@ public class Client implements Runnable, IClient {
             throw new ClientClosedException();
         }
         return command.commandResult;
+    }
+
+    @Override
+    public boolean ping() throws SlockException {
+        PingCommand pingCommand = new PingCommand();
+        PingResultCommand pingResultCommand = (PingResultCommand) sendCommand(pingCommand);
+        if (pingResultCommand != null && pingResultCommand.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
+            return true;
+        }
+        return false;
     }
 
     @Override

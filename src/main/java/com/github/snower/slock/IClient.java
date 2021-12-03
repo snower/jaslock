@@ -10,6 +10,7 @@ public interface IClient {
     void open() throws IOException;
     void close();
     CommandResult sendCommand(Command command) throws SlockException;
+    boolean ping() throws SlockException;
     Database selectDatabase(byte dbId);
     Lock newLock(byte[] lockKey, int timeout, int expried);
     Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted);
