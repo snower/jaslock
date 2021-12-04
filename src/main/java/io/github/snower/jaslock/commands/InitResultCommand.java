@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 public class InitResultCommand extends CommandResult {
     protected byte initType;
@@ -18,16 +17,13 @@ public class InitResultCommand extends CommandResult {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-            result = (byte) byteArrayInputStream.read();
-            initType = (byte) byteArrayInputStream.read();
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
+        result = (byte) byteArrayInputStream.read();
+        initType = (byte) byteArrayInputStream.read();
         return this;
     }
 
@@ -39,7 +35,7 @@ public class InitResultCommand extends CommandResult {
         byteArrayOutputStream.write(commandType);
         byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(initType);
-        byteArrayOutputStream.writeBytes(new byte[43]);
+        byteArrayOutputStream.write(new byte[43], 0, 43);
         return byteArrayOutputStream.toByteArray();
     }
 }

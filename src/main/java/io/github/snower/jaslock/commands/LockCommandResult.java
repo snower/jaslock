@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 public class LockCommandResult extends CommandResult {
     protected byte flag;
@@ -53,23 +52,22 @@ public class LockCommandResult extends CommandResult {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-            result = (byte) byteArrayInputStream.read();
-            flag = (byte) byteArrayInputStream.read();
-            dbId = (byte) byteArrayInputStream.read();
-            lockId = byteArrayInputStream.readNBytes(16);
-            lockKey = byteArrayInputStream.readNBytes(16);
-            lCount = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
-            count = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
-            lrCount = (byte) byteArrayInputStream.read();
-            rCount = (byte) byteArrayInputStream.read();
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
+        result = (byte) byteArrayInputStream.read();
+        flag = (byte) byteArrayInputStream.read();
+        dbId = (byte) byteArrayInputStream.read();
+        lockId = new byte[16];
+        byteArrayInputStream.read(lockId, 0, 16);
+        lockKey = new byte[16];
+        byteArrayInputStream.read(lockKey, 0, 16);
+        lCount = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
+        count = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
+        lrCount = (byte) byteArrayInputStream.read();
+        rCount = (byte) byteArrayInputStream.read();
         return this;
     }
 
@@ -90,7 +88,7 @@ public class LockCommandResult extends CommandResult {
         byteArrayOutputStream.write((count >> 8) & 0xff);
         byteArrayOutputStream.write(lrCount);
         byteArrayOutputStream.write(rCount);
-        byteArrayOutputStream.writeBytes(new byte[4]);
+        byteArrayOutputStream.write(new byte[4], 0, 4);
         return byteArrayOutputStream.toByteArray();
     }
 }

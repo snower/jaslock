@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,15 +24,13 @@ public class InitCommand extends Command {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-            clientId = byteArrayInputStream.readNBytes(16);
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
+        clientId = new byte[16];
+        byteArrayInputStream.read(clientId, 0, 16);
         return this;
     }
 
@@ -45,7 +42,7 @@ public class InitCommand extends Command {
         byteArrayOutputStream.write(commandType);
         byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(clientId, 0, 16);
-        byteArrayOutputStream.writeBytes(new byte[29]);
+        byteArrayOutputStream.write(new byte[29], 0, 29);
         return byteArrayOutputStream.toByteArray();
     }
 

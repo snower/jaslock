@@ -103,8 +103,15 @@ public class Client implements Runnable, IClient {
                     byte[] buf = new byte[64];
                     while (!closed && socket != null) {
                         try {
-                            int n = inputStream.readNBytes(buf, 0, 64);
-                            if (n < 64) {
+                            int n = inputStream.read(buf, 0, 64);
+                            while (n > 0 && n < 64) {
+                                int nn = inputStream.read(buf, n, 64 - n);
+                                if(nn <= 0) {
+                                    break;
+                                }
+                                n += nn;
+                            }
+                            if(n < 64) {
                                 break;
                             }
                         } catch (IOException ignored) {
@@ -219,7 +226,14 @@ public class Client implements Runnable, IClient {
         }
 
         try {
-            int n = inputStream.readNBytes(buf, 0, 64);
+            int n = inputStream.read(buf, 0, 64);
+            while (n > 0 && n < 64) {
+                int nn = inputStream.read(buf, n, 64 - n);
+                if(nn <= 0) {
+                    break;
+                }
+                n += nn;
+            }
             if (n < 64) {
                 throw new IOException("read result error");
             }

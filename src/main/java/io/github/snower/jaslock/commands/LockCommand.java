@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -76,24 +75,23 @@ public class LockCommand extends Command {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-            flag = (byte) byteArrayInputStream.read();
-            dbId = (byte) byteArrayInputStream.read();
-            lockId = byteArrayInputStream.readNBytes(16);
-            lockKey = byteArrayInputStream.readNBytes(16);
-            timeout = byteArrayInputStream.read() | (byteArrayInputStream.read() << 8)
-                    | (byteArrayInputStream.read() << 16) | (byteArrayInputStream.read() << 24);
-            expried = byteArrayInputStream.read() | (byteArrayInputStream.read() << 8)
-                    | (byteArrayInputStream.read() << 16) | (byteArrayInputStream.read() << 24);
-            count = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
-            rCount = (byte) byteArrayInputStream.read();
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
+        flag = (byte) byteArrayInputStream.read();
+        dbId = (byte) byteArrayInputStream.read();
+        lockId = new byte[16];
+        byteArrayInputStream.read(lockId, 0, 16);
+        lockKey = new byte[16];
+        byteArrayInputStream.read(lockKey, 0, 16);
+        timeout = byteArrayInputStream.read() | (byteArrayInputStream.read() << 8)
+                | (byteArrayInputStream.read() << 16) | (byteArrayInputStream.read() << 24);
+        expried = byteArrayInputStream.read() | (byteArrayInputStream.read() << 8)
+                | (byteArrayInputStream.read() << 16) | (byteArrayInputStream.read() << 24);
+        count = (short) (((short) byteArrayInputStream.read()) | (((short) byteArrayInputStream.read()) << 8));
+        rCount = (byte) byteArrayInputStream.read();
         return this;
     }
 

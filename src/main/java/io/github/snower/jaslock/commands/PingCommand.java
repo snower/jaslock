@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 public class PingCommand extends Command {
     public PingCommand() {
@@ -12,14 +11,11 @@ public class PingCommand extends Command {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
         return this;
     }
 
@@ -30,7 +26,7 @@ public class PingCommand extends Command {
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
         byteArrayOutputStream.write(requestId, 0, 16);
-        byteArrayOutputStream.writeBytes(new byte[45]);
+        byteArrayOutputStream.write(new byte[45], 0, 45);
         return byteArrayOutputStream.toByteArray();
     }
 }

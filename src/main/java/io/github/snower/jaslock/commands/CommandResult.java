@@ -2,7 +2,6 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 public class CommandResult implements ICommand {
     protected byte magic;
@@ -44,15 +43,12 @@ public class CommandResult implements ICommand {
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-        try {
-            magic = (byte) byteArrayInputStream.read();
-            version = (byte) byteArrayInputStream.read();
-            commandType = (byte) byteArrayInputStream.read();
-            requestId = byteArrayInputStream.readNBytes(16);
-            result = (byte) byteArrayInputStream.read();
-        } catch (IOException e) {
-            return null;
-        }
+        magic = (byte) byteArrayInputStream.read();
+        version = (byte) byteArrayInputStream.read();
+        commandType = (byte) byteArrayInputStream.read();
+        requestId = new byte[16];
+        byteArrayInputStream.read(requestId, 0, 16);
+        result = (byte) byteArrayInputStream.read();
         return this;
     }
 
@@ -63,7 +59,7 @@ public class CommandResult implements ICommand {
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
         byteArrayOutputStream.write(requestId, 0, 16);
-        byteArrayOutputStream.writeBytes(new byte[44]);
+        byteArrayOutputStream.write(new byte[44], 0, 44);
         return byteArrayOutputStream.toByteArray();
     }
 }
