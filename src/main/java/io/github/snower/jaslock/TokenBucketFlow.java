@@ -41,27 +41,29 @@ public class TokenBucketFlow {
     }
 
     public void acquire() throws SlockException {
-        synchronized (this) {
-            int expried = 0;
-            long now = new Date().getTime();
-            if(period <= 1) {
-                expried = (int) (((1000L - now%1000L) | 0x04000000L) & 0xffffffffL);
-            } else {
-                now = now / 1000L;
-                if(((long) period)%60 == 0) {
-                    expried = (int) (((now/60L+1L)*60L)%120L + (60L - (now % 60L)));
-                } else {
-                    expried = (int) (((long)period) - (now % ((long) (period))));
-                }
+        if(period < 3) {
+            synchronized (this) {
+                int expried = (int)Math.ceil(period * 1000) | 0x04000000;
+                expried = expried | (expriedFlag << 16);
+                flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
             }
+            flowLock.acquire();
+            return;
+        }
+
+        synchronized (this) {
+            long now = new Date().getTime() / 1000L;
+            int expried = (int) (((long)Math.ceil(period)) - (now % ((long) Math.ceil((period)))));
             expried = expried | (expriedFlag << 16);
-            flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+            flowLock = new Lock(database, flowKey, LockCommand.genLockId(), 0, expried, count, (byte) 0);
         }
 
         try {
             flowLock.acquire();
         } catch (LockTimeoutException e) {
-            flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, (int) period, count, (byte) 0);
+            int expried = (int) Math.ceil(period);
+            expried = expried | (expriedFlag << 16);
+            flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
             flowLock.acquire();
         }
     }
