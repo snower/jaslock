@@ -78,8 +78,8 @@ public class ReplsetClient implements IClient {
     @Override
     public boolean ping() throws SlockException {
         PingCommand pingCommand = new PingCommand();
-        PingResultCommand pingResultCommand = (PingResultCommand) sendCommand(pingCommand);
-        if (pingResultCommand != null && pingResultCommand.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
+        PingCommandResult pingCommandResult = (PingCommandResult) sendCommand(pingCommand);
+        if (pingCommandResult != null && pingCommandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
             return true;
         }
         return false;

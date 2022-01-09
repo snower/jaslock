@@ -3,10 +3,10 @@ package io.github.snower.jaslock.commands;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-public class InitResultCommand extends CommandResult {
+public class InitCommandResult extends CommandResult {
     protected byte initType;
 
-    public InitResultCommand() {
+    public InitCommandResult() {
         super();
     }
 

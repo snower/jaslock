@@ -3,8 +3,8 @@ package io.github.snower.jaslock.commands;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-public class PingResultCommand extends CommandResult {
-    public PingResultCommand() {
+public class PingCommandResult extends CommandResult {
+    public PingCommandResult() {
         super();
     }
 

@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class ClientTest
 {
-    static String clientHost = "172.27.214.150";
+    static String clientHost = "localhost";
     static int clinetPort = 5658;
 
     /**

@@ -59,11 +59,20 @@ public class Client implements Runnable, IClient {
 
     public boolean tryOpen() {
         try {
-            open();
-            return true;
+            if(thread != null) {
+                return true;
+            }
+            connect();
         } catch (IOException e) {
+            thread = new Thread(this);
+            thread.setDaemon(true);
+            thread.start();
             return false;
         }
+        thread = new Thread(this);
+        thread.setDaemon(true);
+        thread.start();
+        return true;
     }
 
     @Override
@@ -100,6 +109,11 @@ public class Client implements Runnable, IClient {
         try {
             while (!closed) {
                 try {
+                    if(inputStream == null) {
+                        reconnect();
+                        continue;
+                    }
+
                     byte[] buf = new byte[64];
                     while (!closed && socket != null) {
                         try {
@@ -127,7 +141,7 @@ public class Client implements Runnable, IClient {
                                 }
                                 break;
                             case ICommand.COMMAND_TYPE_PING:
-                                PingResultCommand pingResultCommand = new PingResultCommand();
+                                PingCommandResult pingResultCommand = new PingCommandResult();
                                 if (pingResultCommand.parseCommand(buf) != null) {
                                     handleCommand(pingResultCommand);
                                 }
@@ -142,13 +156,12 @@ public class Client implements Runnable, IClient {
                 }
 
                 closeSocket();
-                reconnect();
             }
         } finally {
             closeSocket();
             thread = null;
+            replsetClient = null;
         }
-        replsetClient = null;
     }
 
     protected void connect() throws IOException {
@@ -237,9 +250,9 @@ public class Client implements Runnable, IClient {
             if (n < 64) {
                 throw new IOException("read result error");
             }
-            InitResultCommand initResultCommand = new InitResultCommand();
-            if (initResultCommand.parseCommand(buf) != null) {
-                if(initResultCommand.getResult() != ICommand.COMMAND_RESULT_SUCCED) {
+            InitCommandResult initCommandResult = new InitCommandResult();
+            if (initCommandResult.parseCommand(buf) != null) {
+                if(initCommandResult.getResult() != ICommand.COMMAND_RESULT_SUCCED) {
                     throw new IOException("init commnad error");
                 }
             }
@@ -307,8 +320,8 @@ public class Client implements Runnable, IClient {
     @Override
     public boolean ping() throws SlockException {
         PingCommand pingCommand = new PingCommand();
-        PingResultCommand pingResultCommand = (PingResultCommand) sendCommand(pingCommand);
-        if (pingResultCommand != null && pingResultCommand.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
+        PingCommandResult pingCommandResult = (PingCommandResult) sendCommand(pingCommand);
+        if (pingCommandResult != null && pingCommandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
             return true;
         }
         return false;
