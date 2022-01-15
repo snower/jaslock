@@ -32,7 +32,7 @@ public class App {
         SlockClient client = new SlockClient("172.27.214.150", 5658);
         try {
             client.open();
-            Lock lock = client.newLock("test".getBytes(StandardCharsets.UTF_8), 5, 5);
+            Lock lock = client.newLock("test", 5, 5);
             lock.acquire();
             lock.release();
         } catch (IOException | SlockException e) {
@@ -51,7 +51,6 @@ import io.github.snower.jaslock.SlockClient;
 import io.github.snower.jaslock.Event;
 import io.github.snower.jaslock.Lock;
 import io.github.snower.jaslock.SlockReplsetClient;
-import io.github.snower.jaslock.SlockReplsetClient;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
@@ -62,7 +61,7 @@ public class App {
         SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
         try {
             replsetClient.open();
-            Lock lock = replsetClient.newLock("test".getBytes(StandardCharsets.UTF_8), 5, 5);
+            Lock lock = replsetClient.newLock("test", 5, 5);
             lock.acquire();
             lock.release();
         } catch (SlockException e) {
@@ -94,10 +93,10 @@ public class App {
         SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
         try {
             replsetClient.open();
-            Event event1 = replsetClient.newEvent("test".getBytes(StandardCharsets.UTF_8), 5, 5, true);
+            Event event1 = replsetClient.newEvent("test", 5, 5, true);
             event1.clear();
 
-            Event event2 = replsetClient.newEvent("test".getBytes(StandardCharsets.UTF_8), 5, 5, true);
+            Event event2 = replsetClient.newEvent("test", 5, 5, true);
             event2.set();
 
             event1.wait(10);
