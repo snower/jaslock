@@ -3,19 +3,20 @@ package io.github.snower.jaslock;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.SlockException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class MaxConcurrentFlow {
-    private Database database;
+    private SlockDatabase database;
     private byte[] flowKey;
     private short count;
     private int timeout;
     private int expried;
     private Lock flowLock;
 
-    public MaxConcurrentFlow(Database database, byte[] flowKey, short count, int timeout, int expried) {
+    public MaxConcurrentFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, int expried) {
         this.database = database;
         if(flowKey.length > 16) {
             try {
@@ -31,6 +32,10 @@ public class MaxConcurrentFlow {
         this.count = (short) (count > 0 ? count - 1 : 0);
         this.timeout = timeout;
         this.expried = expried;
+    }
+
+    public MaxConcurrentFlow(SlockDatabase database, String flowKey, short count, int timeout, int expried) {
+        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, expried);
     }
 
     public void acquire() throws SlockException {

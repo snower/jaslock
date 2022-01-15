@@ -17,10 +17,11 @@ High-performance distributed sync service and atomic DB. Provides good multi-cor
 ```java
 package main;
 
-import io.github.snower.jaslock.Client;
+import io.github.snower.jaslock.SlockClient;
 import io.github.snower.jaslock.Event;
 import io.github.snower.jaslock.Lock;
-import io.github.snower.jaslock.ReplsetClient;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockClient;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        Client client = new Client("172.27.214.150", 5658);
+        SlockClient client = new SlockClient("172.27.214.150", 5658);
         try {
             client.open();
             Lock lock = client.newLock("test".getBytes(StandardCharsets.UTF_8), 5, 5);
@@ -42,13 +43,15 @@ public class App {
     }
 }
 ```
+
 ```java
 package main;
 
-import io.github.snower.jaslock.Client;
+import io.github.snower.jaslock.SlockClient;
 import io.github.snower.jaslock.Event;
 import io.github.snower.jaslock.Lock;
-import io.github.snower.jaslock.ReplsetClient;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockReplsetClient;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
@@ -56,7 +59,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        ReplsetClient replsetClient = new ReplsetClient(new String[]{"172.27.214.150:5658"});
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
         try {
             replsetClient.open();
             Lock lock = replsetClient.newLock("test".getBytes(StandardCharsets.UTF_8), 5, 5);
@@ -76,10 +79,11 @@ public class App {
 ```java
 package main;
 
-import io.github.snower.jaslock.Client;
+import io.github.snower.jaslock.SlockClient;
 import io.github.snower.jaslock.Event;
 import io.github.snower.jaslock.Lock;
-import io.github.snower.jaslock.ReplsetClient;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockReplsetClient;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
@@ -87,7 +91,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        ReplsetClient replsetClient = new ReplsetClient(new String[]{"172.27.214.150:5658"});
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
         try {
             replsetClient.open();
             Event event1 = replsetClient.newEvent("test".getBytes(StandardCharsets.UTF_8), 5, 5, true);

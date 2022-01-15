@@ -4,18 +4,19 @@ import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.SlockException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Semaphore {
-    private Database database;
+    private SlockDatabase database;
     private byte[] semaphoreKey;
     private int timeout;
     private int expried;
     private short count;
 
-    public Semaphore(Database database, byte[] semaphoreKey, short count, int timeout, int expried) {
+    public Semaphore(SlockDatabase database, byte[] semaphoreKey, short count, int timeout, int expried) {
         this.database = database;
         if(semaphoreKey.length > 16) {
             try {
@@ -31,6 +32,10 @@ public class Semaphore {
         this.count = (short) (count > 0 ? count - 1 : 0);
         this.timeout = timeout;
         this.expried = expried;
+    }
+
+    public Semaphore(SlockDatabase database, String semaphoreKey, short count, int timeout, int expried) {
+        this(database, semaphoreKey.getBytes(StandardCharsets.UTF_8), count, timeout, expried);
     }
 
     public void acquire() throws SlockException {

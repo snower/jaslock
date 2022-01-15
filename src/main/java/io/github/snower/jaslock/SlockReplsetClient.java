@@ -8,23 +8,23 @@ import io.github.snower.jaslock.exceptions.SlockException;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-public class ReplsetClient implements IClient {
+public class SlockReplsetClient implements ISlockClient {
     private String[] hosts;
-    private LinkedList<Client> clients;
-    private LinkedList<Client> livedClients;
+    private LinkedList<SlockClient> clients;
+    private LinkedList<SlockClient> livedClients;
     private boolean closed;
-    private Database[] databases;
+    private SlockDatabase[] databases;
 
-    public ReplsetClient(String hosts) {
+    public SlockReplsetClient(String hosts) {
         this(hosts.split(","));
     }
 
-    public ReplsetClient(String[] hosts) {
+    public SlockReplsetClient(String[] hosts) {
         this.hosts = hosts;
         this.clients = new LinkedList<>();
         this.livedClients = new LinkedList<>();
         this.closed = false;
-        this.databases = new Database[256];
+        this.databases = new SlockDatabase[256];
     }
 
     @Override
@@ -35,27 +35,37 @@ public class ReplsetClient implements IClient {
                 continue;
             }
 
-            Client client = new Client(hostInfo[0], Integer.parseInt(hostInfo[1]), this, databases);
+            SlockClient client = new SlockClient(hostInfo[0], Integer.parseInt(hostInfo[1]), this, databases);
             this.clients.add(client);
             client.tryOpen();
         }
     }
 
     @Override
+    public ISlockClient tryOpen() {
+        try {
+            open();
+        } catch (Exception ignore) {
+            return null;
+        }
+        return this;
+    }
+
+    @Override
     public void close() {
         closed = true;
-        for(Client client : clients) {
+        for(SlockClient client : clients) {
             client.close();
         }
     }
 
-    public void addLivedClient(Client client) {
+    public void addLivedClient(SlockClient client) {
         synchronized (this) {
             this.livedClients.add(client);
         }
     }
 
-    public void removeLivedClient(Client client) {
+    public void removeLivedClient(SlockClient client) {
         synchronized (this) {
             this.livedClients.remove(client);
         }
@@ -68,7 +78,7 @@ public class ReplsetClient implements IClient {
         }
 
         try {
-            Client client = livedClients.getFirst();
+            SlockClient client = livedClients.getFirst();
             return client.sendCommand(command);
         } catch (NoSuchElementException e) {
             throw new ClientUnconnectException();
@@ -86,11 +96,11 @@ public class ReplsetClient implements IClient {
     }
 
     @Override
-    public Database selectDatabase(byte dbId) {
+    public SlockDatabase selectDatabase(byte dbId) {
         if(databases[dbId] == null) {
             synchronized (this) {
                 if(databases[dbId] == null) {
-                    databases[dbId] = new Database(this, dbId);
+                    databases[dbId] = new SlockDatabase(this, dbId);
                 }
             }
         }
@@ -103,13 +113,27 @@ public class ReplsetClient implements IClient {
     }
 
     @Override
+    public Lock newLock(String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newLock(lockKey, timeout, expried);
+    }
+
+    @Override
     public Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
     }
 
+    @Override
+    public Event newEvent(String eventKey, int timeout, int expried, boolean defaultSeted) {
+        return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
+    }
 
     @Override
     public ReentrantLock newReentrantLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReentrantLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public ReentrantLock newReentrantLock(String lockKey, int timeout, int expried) {
         return selectDatabase((byte) 0).newReentrantLock(lockKey, timeout, expried);
     }
 
@@ -119,7 +143,17 @@ public class ReplsetClient implements IClient {
     }
 
     @Override
+    public ReadWriteLock newReadWriteLock(String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReadWriteLock(lockKey, timeout, expried);
+    }
+
+    @Override
     public Semaphore newSemaphore(byte[] semaphoreKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newSemaphore(semaphoreKey, count, timeout, expried);
+    }
+
+    @Override
+    public Semaphore newSemaphore(String semaphoreKey, short count, int timeout, int expried) {
         return selectDatabase((byte) 0).newSemaphore(semaphoreKey, count, timeout, expried);
     }
 
@@ -129,7 +163,17 @@ public class ReplsetClient implements IClient {
     }
 
     @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried);
+    }
+
+    @Override
     public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
     }
 }

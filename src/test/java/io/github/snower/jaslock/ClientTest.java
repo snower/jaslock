@@ -28,7 +28,7 @@ public class ClientTest
 
     @Test
     public void testClientLock() throws IOException, SlockException {
-        Client client = new Client(clientHost, clinetPort);
+        SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
         try {
             Lock lock = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
@@ -41,7 +41,7 @@ public class ClientTest
 
     @Test
     public void testReplsetClientLock() throws SlockException {
-        ReplsetClient client = new ReplsetClient(new String[]{clientHost + ":" + clinetPort});
+        SlockReplsetClient client = new SlockReplsetClient(new String[]{clientHost + ":" + clinetPort});
         client.open();
         try {
             Lock lock = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
@@ -54,7 +54,7 @@ public class ClientTest
 
     @Test
     public void testEventDefaultSeted() throws IOException, SlockException {
-        Client client = new Client(clientHost, clinetPort);
+        SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
 
         try {
@@ -72,7 +72,7 @@ public class ClientTest
 
     @Test
     public void testEventDefaultUnseted() throws IOException, SlockException {
-        Client client = new Client(clientHost, clinetPort);
+        SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
 
         try {

@@ -3,6 +3,7 @@ package io.github.snower.jaslock;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.SlockException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -10,14 +11,14 @@ import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
 public class ReadWriteLock {
-    private Database database;
+    private SlockDatabase database;
     private byte[] lockKey;
     private int timeout;
     private int expried;
     private LinkedList<Lock> readLocks;
     private Lock writeLock;
 
-    public ReadWriteLock(Database database, byte[] lockKey, int timeout, int expried) {
+    public ReadWriteLock(SlockDatabase database, byte[] lockKey, int timeout, int expried) {
         this.database = database;
         if(lockKey.length > 16) {
             try {
@@ -33,6 +34,10 @@ public class ReadWriteLock {
         this.timeout = timeout;
         this.expried = expried;
         this.readLocks = new LinkedList<>();
+    }
+
+    public ReadWriteLock(SlockDatabase database, String lockKey, int timeout, int expried) {
+        this(database, lockKey.getBytes(StandardCharsets.UTF_8), timeout, expried);
     }
 
     public void acquireWrite() throws SlockException {

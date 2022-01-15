@@ -3,12 +3,13 @@ package io.github.snower.jaslock;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.exceptions.*;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Event {
-    private Database database;
+    private SlockDatabase database;
     private byte[] eventKey;
     private int timeout;
     private int expried;
@@ -17,7 +18,7 @@ public class Event {
     private Lock waitLock;
     private boolean defaultSeted;
 
-    public Event(Database database, byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
+    public Event(SlockDatabase database, byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         this.database = database;
         if(eventKey.length > 16) {
             try {
@@ -35,8 +36,16 @@ public class Event {
         this.defaultSeted = defaultSeted;
     }
 
-    public Event(Database database, byte[] eventKey, int timeout, int expried) {
+    public Event(SlockDatabase database, byte[] eventKey, int timeout, int expried) {
         this(database, eventKey, timeout, expried, true);
+    }
+
+    public Event(SlockDatabase database, String eventKey, int timeout, int expried, boolean defaultSeted) {
+        this(database, eventKey.getBytes(StandardCharsets.UTF_8), timeout, expried, defaultSeted);
+    }
+
+    public Event(SlockDatabase database, String eventKey, int timeout, int expried) {
+        this(database, eventKey.getBytes(StandardCharsets.UTF_8), timeout, expried, true);
     }
 
     public void clear() throws SlockException {

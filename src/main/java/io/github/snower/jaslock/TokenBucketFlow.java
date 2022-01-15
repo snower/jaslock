@@ -4,13 +4,14 @@ import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.LockTimeoutException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Date;
 
 public class TokenBucketFlow {
-    private Database database;
+    private SlockDatabase database;
     private byte[] flowKey;
     private short count;
     private int timeout;
@@ -18,7 +19,7 @@ public class TokenBucketFlow {
     private int expriedFlag;
     private Lock flowLock;
 
-    public TokenBucketFlow(Database database, byte[] flowKey, short count, int timeout, double period) {
+    public TokenBucketFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, double period) {
         this.database = database;
         if(flowKey.length > 16) {
             try {
@@ -34,6 +35,10 @@ public class TokenBucketFlow {
         this.count = (short) (count > 0 ? count - 1 : 0);
         this.timeout = timeout;
         this.period = period;
+    }
+
+    public TokenBucketFlow(SlockDatabase database, String flowKey, short count, int timeout, double period) {
+        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, period);
     }
 
     public void setExpriedFlag(int expriedFlag) {

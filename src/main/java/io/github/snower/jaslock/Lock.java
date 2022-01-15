@@ -6,12 +6,13 @@ import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
 import io.github.snower.jaslock.exceptions.*;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Lock {
-    private Database database;
+    private SlockDatabase database;
     private byte[] lockKey;
     private byte[] lockId;
     private int timeout;
@@ -19,7 +20,7 @@ public class Lock {
     private short count;
     private byte rCount;
 
-    public Lock(Database database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
+    public Lock(SlockDatabase database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
         this.database = database;
         if(lockKey.length > 16) {
             try {
@@ -53,8 +54,12 @@ public class Lock {
         this.rCount = rCount;
     }
 
-    public Lock(Database database, byte[] lockKey, int timeout, int expried) {
+    public Lock(SlockDatabase database, byte[] lockKey, int timeout, int expried) {
         this(database, lockKey, null, timeout, expried, (short) 0, (byte) 0);
+    }
+
+    public Lock(SlockDatabase database, String lockKey, int timeout, int expried) {
+        this(database, lockKey.getBytes(StandardCharsets.UTF_8), null, timeout, expried, (short) 0, (byte) 0);
     }
 
     public void acquire(byte flag) throws SlockException {

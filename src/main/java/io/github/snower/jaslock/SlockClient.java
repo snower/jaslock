@@ -10,7 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Client implements Runnable, IClient {
+public class SlockClient implements Runnable, ISlockClient {
     private String host;
     private int port;
     private boolean closed;
@@ -19,27 +19,27 @@ public class Client implements Runnable, IClient {
     private Socket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
-    private Database[] databases;
+    private SlockDatabase[] databases;
     private ConcurrentHashMap<String, Command> requests;
-    private ReplsetClient replsetClient;
+    private SlockReplsetClient replsetClient;
 
-    public Client() {
+    public SlockClient() {
         this("127.0.0.1", 5658);
     }
 
-    public Client(String host) {
+    public SlockClient(String host) {
         this(host, 5658);
     }
 
-    public Client(String host, int port) {
+    public SlockClient(String host, int port) {
         this.host = host;
         this.port = port;
-        this.databases = new Database[256];
+        this.databases = new SlockDatabase[256];
         this.requests = new ConcurrentHashMap<>();
         this.closed = false;
     }
 
-    public Client(String host, int port, ReplsetClient replsetClient, Database[] databases) {
+    public SlockClient(String host, int port, SlockReplsetClient replsetClient, SlockDatabase[] databases) {
         this(host, port);
         this.replsetClient = replsetClient;
         this.databases = databases;
@@ -57,22 +57,23 @@ public class Client implements Runnable, IClient {
         thread.start();
     }
 
-    public boolean tryOpen() {
+    @Override
+    public ISlockClient tryOpen() {
         try {
             if(thread != null) {
-                return true;
+                return this;
             }
             connect();
         } catch (IOException e) {
             thread = new Thread(this);
             thread.setDaemon(true);
             thread.start();
-            return false;
+            return null;
         }
         thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
-        return true;
+        return this;
     }
 
     @Override
@@ -328,11 +329,11 @@ public class Client implements Runnable, IClient {
     }
 
     @Override
-    public Database selectDatabase(byte dbId) {
+    public SlockDatabase selectDatabase(byte dbId) {
         if(databases[dbId] == null) {
             synchronized (this) {
                 if(databases[dbId] == null) {
-                    databases[dbId] = new Database(this, dbId);
+                    databases[dbId] = new SlockDatabase(this, dbId);
                 }
             }
         }
@@ -345,7 +346,17 @@ public class Client implements Runnable, IClient {
     }
 
     @Override
+    public Lock newLock(String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newLock(lockKey, timeout, expried);
+    }
+
+    @Override
     public Event newEvent(byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
+        return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
+    }
+
+    @Override
+    public Event newEvent(String eventKey, int timeout, int expried, boolean defaultSeted) {
         return selectDatabase((byte) 0).newEvent(eventKey, timeout, expried, defaultSeted);
     }
 
@@ -355,7 +366,17 @@ public class Client implements Runnable, IClient {
     }
 
     @Override
+    public ReentrantLock newReentrantLock(String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReentrantLock(lockKey, timeout, expried);
+    }
+
+    @Override
     public ReadWriteLock newReadWriteLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newReadWriteLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public ReadWriteLock newReadWriteLock(String lockKey, int timeout, int expried) {
         return selectDatabase((byte) 0).newReadWriteLock(lockKey, timeout, expried);
     }
 
@@ -365,12 +386,27 @@ public class Client implements Runnable, IClient {
     }
 
     @Override
+    public Semaphore newSemaphore(String semaphoreKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newSemaphore(semaphoreKey, count, timeout, expried);
+    }
+
+    @Override
     public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried) {
         return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried);
     }
 
     @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried);
+    }
+
+    @Override
     public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
     }
 }
