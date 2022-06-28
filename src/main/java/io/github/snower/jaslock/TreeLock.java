@@ -72,19 +72,18 @@ public class TreeLock {
             Lock parentCheckLock = null;
 
             if (!treeLock.isRoot()) {
-                childCheckLock = new Lock(database, treeLock.getParentKey(), treeLock.getLockKey(), 0, expried, (short) 0xffff, (byte) 0);
+                childCheckLock = new Lock(database, treeLock.getLockKey(), treeLock.getParentKey(), 0, expried, (short) 0xffff, (byte) 0);
                 try {
                     childCheckLock.acquire(ICommand.LOCK_FLAG_LOCK_TREE_LOCK);
-                } catch (LockLockedException e) {
-                    return;
-                }
-                parentCheckLock = new Lock(database, LockCommand.genLockId(), treeLock.getParentKey(), 0, expried, (short) 0xffff, (byte) 0);
-                try {
-                    parentCheckLock.acquire();
+                    parentCheckLock = new Lock(database, treeLock.getParentKey(), LockCommand.genLockId(), 0, expried, (short) 0xffff, (byte) 0);
+                    try {
+                        parentCheckLock.acquire();
+                    } catch (LockLockedException ignored) {
+                    } catch (Exception e) {
+                        childCheckLock.release();
+                        throw e;
+                    }
                 } catch (LockLockedException ignored) {
-                } catch (Exception e) {
-                    childCheckLock.release();
-                    throw e;
                 }
             }
 
@@ -92,10 +91,16 @@ public class TreeLock {
                 lock.acquire();
             } catch (Exception e) {
                 if (childCheckLock != null) {
-                    childCheckLock.release();
+                    try {
+                        childCheckLock.release();
+                    } catch (SlockException ignored) {
+                    }
                 }
                 if (parentCheckLock != null) {
-                    parentCheckLock.release();
+                    try {
+                        parentCheckLock.release();
+                    } catch (SlockException ignored) {
+                    }
                 }
                 throw e;
             }

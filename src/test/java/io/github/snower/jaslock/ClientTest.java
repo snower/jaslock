@@ -89,4 +89,68 @@ public class ClientTest
             client.close();
         }
     }
+
+    @Test
+    public void testTreeLock() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        TreeLock rootLock = client.newTreeLock("TestTreeLock", 5, 10);
+        TreeLock.TreeLockLock lock = rootLock.newLock();
+        lock.acquire();
+
+        TreeLock childLock = rootLock.newChild();
+        TreeLock.TreeLockLock clock1 = childLock.newLock();
+        clock1.acquire();
+
+        TreeLock.TreeLockLock clock2 = childLock.newLock();
+        clock2.acquire();
+
+        Lock testLock = client.newLock(rootLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+        testLock = client.newLock(childLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+
+        lock.release();
+        testLock = client.newLock(rootLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+        testLock = client.newLock(childLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+
+        clock1.release();
+        testLock = client.newLock(rootLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+        testLock = client.newLock(childLock.getLockKey(), 0, 0);
+        try {
+            testLock.acquire();
+            throw new SlockException();
+        } catch (SlockException e) {
+        }
+
+        clock2.release();
+        testLock = client.newLock(rootLock.getLockKey(), 0, 0);
+        testLock.acquire();
+        testLock = client.newLock(childLock.getLockKey(), 0, 0);
+        testLock.acquire();
+    }
 }
