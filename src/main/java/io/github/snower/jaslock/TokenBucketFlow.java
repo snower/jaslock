@@ -11,13 +11,12 @@ import java.util.Arrays;
 import java.util.Date;
 
 public class TokenBucketFlow {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] flowKey;
-    private short count;
-    private int timeout;
-    private double period;
+    private final short count;
+    private final int timeout;
+    private final double period;
     private int expriedFlag;
-    private Lock flowLock;
 
     public TokenBucketFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, double period) {
         this.database = database;
@@ -46,6 +45,7 @@ public class TokenBucketFlow {
     }
 
     public void acquire() throws SlockException {
+        Lock flowLock;
         if(period < 3) {
             synchronized (this) {
                 int expried = (int)Math.ceil(period * 1000) | 0x04000000;

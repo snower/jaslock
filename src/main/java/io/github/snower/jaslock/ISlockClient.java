@@ -2,12 +2,13 @@ package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
+import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
 
 public interface ISlockClient {
-    void open() throws IOException;
+    void open() throws IOException, ClientUnconnectException;
     ISlockClient tryOpen();
     void close();
     CommandResult sendCommand(Command command) throws SlockException;
@@ -27,4 +28,10 @@ public interface ISlockClient {
     MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried);
     TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period);
     TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period);
+    GroupEvent newGroupEvent(byte[] groupKey, long clientId, long versionId, int timeout, int expried);
+    GroupEvent newGroupEvent(String groupKey, long clientId, long versionId, int timeout, int expried);
+    TreeLock newTreeLock(byte[] parentKey, byte[] lockKey, int timeout, int expried);
+    TreeLock newTreeLock(String parentKey, String lockKey, int timeout, int expried);
+    TreeLock newTreeLock(byte[] lockKey, int timeout, int expried);
+    TreeLock newTreeLock(String lockKey, int timeout, int expried);
 }

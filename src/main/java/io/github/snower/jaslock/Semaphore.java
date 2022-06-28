@@ -10,11 +10,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Semaphore {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] semaphoreKey;
-    private int timeout;
-    private int expried;
-    private short count;
+    private final int timeout;
+    private final int expried;
+    private final short count;
 
     public Semaphore(SlockDatabase database, byte[] semaphoreKey, short count, int timeout, int expried) {
         this.database = database;

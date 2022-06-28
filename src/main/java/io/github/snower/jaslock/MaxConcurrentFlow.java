@@ -9,12 +9,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class MaxConcurrentFlow {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] flowKey;
-    private short count;
-    private int timeout;
-    private int expried;
-    private Lock flowLock;
+    private final short count;
+    private final int timeout;
+    private final int expried;
+    private volatile Lock flowLock;
 
     public MaxConcurrentFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, int expried) {
         this.database = database;

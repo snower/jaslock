@@ -12,13 +12,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Lock {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] lockKey;
     private byte[] lockId;
-    private int timeout;
-    private int expried;
-    private short count;
-    private byte rCount;
+    private final int timeout;
+    private final int expried;
+    private final short count;
+    private final byte rCount;
 
     public Lock(SlockDatabase database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
         this.database = database;
@@ -62,12 +62,12 @@ public class Lock {
         this(database, lockKey.getBytes(StandardCharsets.UTF_8), null, timeout, expried, (short) 0, (byte) 0);
     }
 
-    public void acquire(byte flag) throws SlockException {
+    public LockCommandResult acquire(byte flag) throws SlockException {
         LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, flag, database.getDbId(), lockKey,
                 lockId, timeout, expried, count, rCount);
         LockCommandResult commandResult = (LockCommandResult) database.getClient().sendCommand(command);
         if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
-            return;
+            return commandResult;
         }
 
         switch (commandResult.getResult()) {
@@ -88,12 +88,12 @@ public class Lock {
         acquire((byte) 0);
     }
 
-    public void release(byte flag) throws SlockException {
+    public LockCommandResult release(byte flag) throws SlockException {
         LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, flag, database.getDbId(), lockKey,
                 lockId, timeout, expried, count, rCount);
         LockCommandResult commandResult = (LockCommandResult) database.getClient().sendCommand(command);
         if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
-            return;
+            return commandResult;
         }
 
         switch (commandResult.getResult()) {
@@ -133,5 +133,9 @@ public class Lock {
     public void releaseHead() throws SlockException {
         Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
         lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED);
+    }
+
+    public LockCommandResult releaseHeadRetoLockWait() throws SlockException {
+        return acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT));
     }
 }

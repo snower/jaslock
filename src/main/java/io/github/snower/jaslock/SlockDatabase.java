@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 public class SlockDatabase {
     private ISlockClient client;
-    private byte dbId;
+    private final byte dbId;
 
     public SlockDatabase(ISlockClient client, byte dbId) {
         this.client = client;
@@ -77,5 +77,29 @@ public class SlockDatabase {
 
     public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return new TokenBucketFlow(this, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, period);
+    }
+
+    public GroupEvent newGroupEvent(byte[] groupKey, long clientId, long versionId, int timeout, int expried) {
+        return new GroupEvent(this, groupKey, clientId, versionId, timeout, expried);
+    }
+
+    public GroupEvent newGroupEvent(String groupKey, long clientId, long versionId, int timeout, int expried) {
+        return new GroupEvent(this, groupKey, clientId, versionId, timeout, expried);
+    }
+
+    public TreeLock newTreeLock(byte[] parentKey, byte[] lockKey, int timeout, int expried) {
+        return new TreeLock(this, parentKey, lockKey, timeout, expried);
+    }
+
+    public TreeLock newTreeLock(String parentKey, String lockKey, int timeout, int expried) {
+        return new TreeLock(this, parentKey, lockKey, timeout, expried);
+    }
+
+    public TreeLock newTreeLock(byte[] lockKey, int timeout, int expried) {
+        return new TreeLock(this, lockKey, timeout, expried);
+    }
+
+    public TreeLock newTreeLock(String lockKey, int timeout, int expried) {
+        return new TreeLock(this, lockKey, timeout, expried);
     }
 }

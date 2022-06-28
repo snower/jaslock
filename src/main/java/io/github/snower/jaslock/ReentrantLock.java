@@ -9,10 +9,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class ReentrantLock {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] lockKey;
-    private int timeout;
-    private int expried;
+    private final int timeout;
+    private final int expried;
     private Lock lock;
 
     public ReentrantLock(SlockDatabase database, byte[] lockKey, int timeout, int expried) {

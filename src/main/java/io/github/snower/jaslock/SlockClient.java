@@ -11,8 +11,8 @@ import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SlockClient implements Runnable, ISlockClient {
-    private String host;
-    private int port;
+    private final String host;
+    private final int port;
     private boolean closed;
     private byte[] clientId;
     private Thread thread;
@@ -178,9 +178,9 @@ public class SlockClient implements Runnable, ISlockClient {
             throw e;
         }
 
-        initClient();
+        InitCommandResult initCommandResult = initClient();
         if(replsetClient != null) {
-            replsetClient.addLivedClient(this);
+            replsetClient.addLivedClient(this, initCommandResult.getInitType() == 1);
         }
     }
 
@@ -226,7 +226,7 @@ public class SlockClient implements Runnable, ISlockClient {
         }
     }
 
-    protected void initClient() throws IOException {
+    protected InitCommandResult initClient() throws IOException {
         if(clientId == null) {
             clientId = InitCommand.genClientId();
         }
@@ -257,6 +257,7 @@ public class SlockClient implements Runnable, ISlockClient {
                     throw new IOException("init commnad error");
                 }
             }
+            return initCommandResult;
         } catch (IOException e) {
             closeSocket();
             throw e;
@@ -322,10 +323,7 @@ public class SlockClient implements Runnable, ISlockClient {
     public boolean ping() throws SlockException {
         PingCommand pingCommand = new PingCommand();
         PingCommandResult pingCommandResult = (PingCommandResult) sendCommand(pingCommand);
-        if (pingCommandResult != null && pingCommandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED) {
-            return true;
-        }
-        return false;
+        return pingCommandResult != null && pingCommandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED;
     }
 
     @Override
@@ -408,5 +406,35 @@ public class SlockClient implements Runnable, ISlockClient {
     @Override
     public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
+    }
+
+    @Override
+    public GroupEvent newGroupEvent(byte[] groupKey, long clientId, long versionId, int timeout, int expried) {
+        return selectDatabase((byte) 0).newGroupEvent(groupKey, clientId, versionId, timeout, expried);
+    }
+
+    @Override
+    public GroupEvent newGroupEvent(String groupKey, long clientId, long versionId, int timeout, int expried) {
+        return selectDatabase((byte) 0).newGroupEvent(groupKey, clientId, versionId, timeout, expried);
+    }
+
+    @Override
+    public TreeLock newTreeLock(byte[] parentKey, byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newTreeLock(parentKey, lockKey, timeout, expried);
+    }
+
+    @Override
+    public TreeLock newTreeLock(String parentKey, String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newTreeLock(parentKey, lockKey, timeout, expried);
+    }
+
+    @Override
+    public TreeLock newTreeLock(byte[] lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newTreeLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public TreeLock newTreeLock(String lockKey, int timeout, int expried) {
+        return selectDatabase((byte) 0).newTreeLock(lockKey, timeout, expried);
     }
 }

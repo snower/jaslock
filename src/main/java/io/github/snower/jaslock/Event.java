@@ -9,14 +9,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Event {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] eventKey;
-    private int timeout;
-    private int expried;
+    private final int timeout;
+    private final int expried;
     private Lock eventLock;
     private Lock checkLock;
     private Lock waitLock;
-    private boolean defaultSeted;
+    private final boolean defaultSeted;
 
     public Event(SlockDatabase database, byte[] eventKey, int timeout, int expried, boolean defaultSeted) {
         this.database = database;

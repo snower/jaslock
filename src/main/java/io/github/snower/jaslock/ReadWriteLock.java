@@ -11,11 +11,11 @@ import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
 public class ReadWriteLock {
-    private SlockDatabase database;
+    private final SlockDatabase database;
     private byte[] lockKey;
-    private int timeout;
-    private int expried;
-    private LinkedList<Lock> readLocks;
+    private final int timeout;
+    private final int expried;
+    private final LinkedList<Lock> readLocks;
     private Lock writeLock;
 
     public ReadWriteLock(SlockDatabase database, byte[] lockKey, int timeout, int expried) {
