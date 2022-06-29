@@ -40,8 +40,16 @@ public class TreeLock {
         return new TreeLockLock(database, this, new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, (short) 0xffff, (byte) 0));
     }
 
+    public TreeLockLock loadLock(byte[] lockId) {
+        return new TreeLockLock(database, this, new Lock(database, lockKey, lockId, timeout, expried, (short) 0xffff, (byte) 0));
+    }
+
     public TreeLock newChild() {
         return new TreeLock(database, lockKey, LockCommand.genLockId(), timeout, expried);
+    }
+
+    public TreeLock loadChild(byte[] lockKey) {
+        return new TreeLock(database, lockKey, lockKey, timeout, expried);
     }
 
     public byte[] getParentKey() {
@@ -108,6 +116,14 @@ public class TreeLock {
 
         public void release() throws SlockException {
             lock.release(ICommand.UNLOCK_FLAG_UNLOCK_TREE_LOCK);
+        }
+
+        public byte[] getLockKey() {
+            return lock.getLockKey();
+        }
+
+        public byte[] getLockId() {
+            return lock.getLockId();
         }
     }
 }

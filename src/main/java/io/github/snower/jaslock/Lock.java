@@ -20,6 +20,30 @@ public class Lock {
     private final short count;
     private final byte rCount;
 
+    public byte[] getLockKey() {
+        return lockKey;
+    }
+
+    public byte[] getLockId() {
+        return lockId;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public int getExpried() {
+        return expried;
+    }
+
+    public short getCount() {
+        return count;
+    }
+
+    public byte getRCount() {
+        return rCount;
+    }
+
     public Lock(SlockDatabase database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
         this.database = database;
         if(lockKey.length > 16) {
