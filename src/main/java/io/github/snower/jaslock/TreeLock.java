@@ -49,7 +49,7 @@ public class TreeLock {
     }
 
     public TreeLock loadChild(byte[] lockKey) {
-        return new TreeLock(database, lockKey, lockKey, timeout, expried);
+        return new TreeLock(database, this.lockKey, lockKey, timeout, expried);
     }
 
     public byte[] getParentKey() {
