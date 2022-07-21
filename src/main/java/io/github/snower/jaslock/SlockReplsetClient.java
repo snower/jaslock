@@ -1,12 +1,17 @@
 package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.*;
+import io.github.snower.jaslock.deferred.DeferredCommandResult;
+import io.github.snower.jaslock.deferred.DeferredManager;
+import io.github.snower.jaslock.deferred.DeferredOption;
 import io.github.snower.jaslock.exceptions.ClientClosedException;
+import io.github.snower.jaslock.exceptions.ClientDeferredDisabledException;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 
 public class SlockReplsetClient implements ISlockClient {
     private final String[] hosts;
@@ -15,6 +20,7 @@ public class SlockReplsetClient implements ISlockClient {
     private volatile SlockClient livedLeaderClient;
     private boolean closed;
     private final SlockDatabase[] databases;
+    private DeferredManager deferredManager;
 
     public SlockReplsetClient(String hosts) {
         this(hosts.split("\\,"));
@@ -30,6 +36,19 @@ public class SlockReplsetClient implements ISlockClient {
     }
 
     @Override
+    public void enableDeferred(DeferredOption deferredOption) {
+        if (deferredManager != null) return;
+
+        deferredManager = new DeferredManager(deferredOption);
+        if (!clients.isEmpty()) {
+            deferredManager.start();
+            for (SlockClient client : clients) {
+                client.setDeferredManager(deferredManager);
+            }
+        }
+    }
+
+    @Override
     public void open() throws ClientUnconnectException {
         for(String host : hosts) {
             String[] hostInfo = host.startsWith("[") && host.contains("]:") ? host.substring(1).split("\\]\\:") : host.split("\\:");
@@ -38,12 +57,19 @@ public class SlockReplsetClient implements ISlockClient {
             }
 
             SlockClient client = new SlockClient(hostInfo[0], Integer.parseInt(hostInfo[1]), this, databases);
-            this.clients.add(client);
+            clients.add(client);
             client.tryOpen();
         }
 
-        if (this.clients.isEmpty()) {
+        if (clients.isEmpty()) {
             throw new ClientUnconnectException();
+        }
+
+        if (deferredManager != null) {
+            deferredManager.start();
+            for (SlockClient client : clients) {
+                client.setDeferredManager(deferredManager);
+            }
         }
     }
 
@@ -95,6 +121,26 @@ public class SlockReplsetClient implements ISlockClient {
                 client = livedClients.getFirst();
             }
             return client.sendCommand(command);
+        } catch (NoSuchElementException e) {
+            throw new ClientUnconnectException();
+        }
+    }
+
+    @Override
+    public void sendCommand(Command command, Consumer<DeferredCommandResult> callback) throws SlockException {
+        if(closed) {
+            throw new ClientClosedException();
+        }
+        if (deferredManager == null) {
+            throw new ClientDeferredDisabledException();
+        }
+
+        try {
+            SlockClient client = livedLeaderClient;
+            if (client == null) {
+                client = livedClients.getFirst();
+            }
+            client.sendCommand(command, callback);
         } catch (NoSuchElementException e) {
             throw new ClientUnconnectException();
         }

@@ -8,6 +8,7 @@ import io.github.snower.jaslock.exceptions.*;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public class GroupEvent {
     private final SlockDatabase database;
@@ -116,6 +117,59 @@ public class GroupEvent {
             }
             throw new EventWaitTimeoutException();
         }
+    }
+
+    public void wait(int timeout, Consumer<Exception> callback) throws SlockException {
+        byte[] lockId = encodeLockId(clientId, versionId);
+        Lock waitLock = new Lock(database, groupKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
+                0, (short) 0, (byte) 0);
+        waitLock.acquire((byte) 0, deferredCommandResult -> {
+            try {
+                LockCommandResult lockCommandResult = (LockCommandResult) deferredCommandResult.getResult();
+                byte[] rlockId = lockCommandResult.getLockId();
+                if (!Arrays.equals(lockId, rlockId)) {
+                    versionId = ((long) rlockId[0]) | (((long) rlockId[1])<<8) | (((long) rlockId[2])<<16) | (((long) rlockId[3])<<24)
+                            | (((long) rlockId[4])<<32) | (((long) rlockId[5])<<40) | (((long) rlockId[6])<<48) | (((long) rlockId[7])<<56);
+                }
+                callback.accept(null);
+            } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
+                callback.accept(new EventWaitTimeoutException());
+            } catch (Exception e) {
+                callback.accept(e);
+            }
+        });
+    }
+
+    public void waitAndTimeoutRetryClear(int timeout, Consumer<Exception> callback) throws SlockException {
+        byte[] lockId = encodeLockId(clientId, versionId);
+        Lock waitLock = new Lock(database, groupKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
+                0, (short) 0, (byte) 0);
+        waitLock.acquire((byte) 0, deferredCommandResult -> {
+            try {
+                LockCommandResult lockCommandResult = (LockCommandResult) deferredCommandResult.getResult();
+                byte[] rlockId = lockCommandResult.getLockId();
+                if (!Arrays.equals(lockId, rlockId)) {
+                    versionId = ((long) rlockId[0]) | (((long) rlockId[1]) << 8) | (((long) rlockId[2]) << 16) | (((long) rlockId[3]) << 24)
+                            | (((long) rlockId[4]) << 32) | (((long) rlockId[5]) << 40) | (((long) rlockId[6]) << 48) | (((long) rlockId[7]) << 56);
+                }
+                callback.accept(null);
+            } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
+                Lock eventLock = new Lock(database, encodeLockId(0, versionId), groupKey,
+                        this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16), expried, (short) 0, (byte) 0);
+                try {
+                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                    try {
+                        eventLock.release();
+                    } catch (SlockException ignored2) {
+                    }
+                    callback.accept(null);
+                    return;
+                } catch (SlockException ignored2) {}
+                callback.accept(new EventWaitTimeoutException());
+            } catch (Exception e) {
+                callback.accept(e);
+            }
+        });
     }
 
     private byte[] encodeLockId(long clientId, long versionId) {

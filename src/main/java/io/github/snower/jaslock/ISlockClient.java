@@ -2,16 +2,21 @@ package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
+import io.github.snower.jaslock.deferred.DeferredCommandResult;
+import io.github.snower.jaslock.deferred.DeferredOption;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 public interface ISlockClient {
+    void enableDeferred(DeferredOption deferredOption);
     void open() throws IOException, ClientUnconnectException;
     ISlockClient tryOpen();
     void close();
     CommandResult sendCommand(Command command) throws SlockException;
+    void sendCommand(Command command, Consumer<DeferredCommandResult> callback) throws SlockException;
     boolean ping() throws SlockException;
     SlockDatabase selectDatabase(byte dbId);
     Lock newLock(byte[] lockKey, int timeout, int expried);
