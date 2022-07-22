@@ -45,7 +45,14 @@ public class SlockClient implements Runnable, ISlockClient {
         this.closed = false;
     }
 
-    public SlockClient(String host, int port, SlockReplsetClient replsetClient, SlockDatabase[] databases) {
+    public SlockClient(String host, int port, boolean enableAsyncCallback) {
+        this(host, port);
+        if (enableAsyncCallback) {
+            this.enableAsyncCallback();
+        }
+    }
+
+    protected SlockClient(String host, int port, SlockReplsetClient replsetClient, SlockDatabase[] databases) {
         this(host, port);
         this.replsetClient = replsetClient;
         this.databases = databases;
@@ -381,7 +388,7 @@ public class SlockClient implements Runnable, ISlockClient {
             throw new ClientClosedException();
         }
         if (callbackExecutorManager == null) {
-            throw new ClientDeferredDisabledException();
+            throw new ClientAsyncCallbackDisabledException();
         }
 
         byte[] buf = command.dumpCommand();

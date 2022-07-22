@@ -5,7 +5,7 @@ import io.github.snower.jaslock.callback.DeferredCommandResult;
 import io.github.snower.jaslock.callback.CallbackExecutorManager;
 import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.ClientClosedException;
-import io.github.snower.jaslock.exceptions.ClientDeferredDisabledException;
+import io.github.snower.jaslock.exceptions.ClientAsyncCallbackDisabledException;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
@@ -33,6 +33,20 @@ public class SlockReplsetClient implements ISlockClient {
         this.livedLeaderClient = null;
         this.closed = false;
         this.databases = new SlockDatabase[256];
+    }
+
+    public SlockReplsetClient(String hosts, boolean enableAsyncCallback) {
+        this(hosts.split("\\,"));
+        if (enableAsyncCallback) {
+            this.enableAsyncCallback();
+        }
+    }
+
+    public SlockReplsetClient(String[] hosts, boolean enableAsyncCallback) {
+        this(hosts);
+        if (enableAsyncCallback) {
+            this.enableAsyncCallback();
+        }
     }
 
     @Override
@@ -127,7 +141,7 @@ public class SlockReplsetClient implements ISlockClient {
         }
     }
 
-    public void addLivedClient(SlockClient client, boolean isLeader) {
+    protected void addLivedClient(SlockClient client, boolean isLeader) {
         synchronized (this) {
             this.livedClients.add(client);
             if (isLeader) {
@@ -136,7 +150,7 @@ public class SlockReplsetClient implements ISlockClient {
         }
     }
 
-    public void removeLivedClient(SlockClient client) {
+    protected void removeLivedClient(SlockClient client) {
         synchronized (this) {
             this.livedClients.remove(client);
             if (client.equals(this.livedLeaderClient)) {
@@ -168,7 +182,7 @@ public class SlockReplsetClient implements ISlockClient {
             throw new ClientClosedException();
         }
         if (callbackExecutorManager == null) {
-            throw new ClientDeferredDisabledException();
+            throw new ClientAsyncCallbackDisabledException();
         }
 
         try {
