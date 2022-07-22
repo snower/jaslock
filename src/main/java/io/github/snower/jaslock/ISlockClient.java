@@ -1,5 +1,6 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.CallbackExecutorManager;
 import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
 import io.github.snower.jaslock.callback.DeferredCommandResult;
@@ -11,8 +12,9 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 public interface ISlockClient {
-    void enableAsyncCallback();
-    void enableAsyncCallback(ExecutorOption executorOption);
+    boolean enableAsyncCallback();
+    boolean enableAsyncCallback(ExecutorOption executorOption);
+    boolean enableAsyncCallback(CallbackExecutorManager callbackExecutorManager);
     void open() throws IOException, ClientUnconnectException;
     ISlockClient tryOpen();
     void close();

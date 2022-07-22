@@ -53,27 +53,36 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     @Override
-    public void enableAsyncCallback() {
-        if (callbackExecutorManager != null) return;
+    public boolean enableAsyncCallback() {
+        if (replsetClient != null) return false;
+        if (callbackExecutorManager != null) return false;
 
         callbackExecutorManager = new CallbackExecutorManager(ExecutorOption.DefaultOption);
         if (thread != null && replsetClient == null) {
             callbackExecutorManager.start();
         }
+        return true;
     }
 
     @Override
-    public void enableAsyncCallback(ExecutorOption executorOption) {
-        if (callbackExecutorManager != null) return;
+    public boolean enableAsyncCallback(ExecutorOption executorOption) {
+        if (replsetClient != null) return false;
+        if (callbackExecutorManager != null) return false;
 
         callbackExecutorManager = new CallbackExecutorManager(executorOption);
         if (thread != null && replsetClient == null) {
             callbackExecutorManager.start();
         }
+        return true;
     }
 
-    public void setCallbackExecutorManager(CallbackExecutorManager callbackExecutorManager) {
+    @Override
+    public boolean enableAsyncCallback(CallbackExecutorManager callbackExecutorManager) {
+        if (this.callbackExecutorManager != null) {
+            this.callbackExecutorManager.stop();
+        }
         this.callbackExecutorManager = callbackExecutorManager;
+        return true;
     }
 
     @Override
@@ -149,6 +158,7 @@ public class SlockClient implements Runnable, ISlockClient {
         if (callbackExecutorManager != null && replsetClient == null) {
             callbackExecutorManager.stop();
         }
+        callbackExecutorManager = null;
     }
 
     @Override

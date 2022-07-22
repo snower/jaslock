@@ -36,29 +36,46 @@ public class SlockReplsetClient implements ISlockClient {
     }
 
     @Override
-    public void enableAsyncCallback() {
-        if (callbackExecutorManager != null) return;
+    public boolean enableAsyncCallback() {
+        if (callbackExecutorManager != null) return false;
 
         callbackExecutorManager = new CallbackExecutorManager(ExecutorOption.DefaultOption);
         if (!clients.isEmpty()) {
             callbackExecutorManager.start();
             for (SlockClient client : clients) {
-                client.setCallbackExecutorManager(callbackExecutorManager);
+                client.enableAsyncCallback(callbackExecutorManager);
             }
         }
+        return true;
     }
 
     @Override
-    public void enableAsyncCallback(ExecutorOption executorOption) {
-        if (callbackExecutorManager != null) return;
+    public boolean enableAsyncCallback(ExecutorOption executorOption) {
+        if (callbackExecutorManager != null) return false;
 
         callbackExecutorManager = new CallbackExecutorManager(executorOption);
         if (!clients.isEmpty()) {
             callbackExecutorManager.start();
             for (SlockClient client : clients) {
-                client.setCallbackExecutorManager(callbackExecutorManager);
+                client.enableAsyncCallback(callbackExecutorManager);
             }
         }
+        return true;
+    }
+
+    @Override
+    public boolean enableAsyncCallback(CallbackExecutorManager callbackExecutorManager) {
+        if (this.callbackExecutorManager != null) {
+            this.callbackExecutorManager.stop();
+        }
+
+        this.callbackExecutorManager = callbackExecutorManager;
+        if (!clients.isEmpty()) {
+            for (SlockClient client : clients) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
+        }
+        return true;
     }
 
     @Override
@@ -70,6 +87,9 @@ public class SlockReplsetClient implements ISlockClient {
             }
 
             SlockClient client = new SlockClient(hostInfo[0], Integer.parseInt(hostInfo[1]), this, databases);
+            if (callbackExecutorManager != null) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
             clients.add(client);
             client.tryOpen();
         }
@@ -77,12 +97,8 @@ public class SlockReplsetClient implements ISlockClient {
         if (clients.isEmpty()) {
             throw new ClientUnconnectException();
         }
-
         if (callbackExecutorManager != null) {
             callbackExecutorManager.start();
-            for (SlockClient client : clients) {
-                client.setCallbackExecutorManager(callbackExecutorManager);
-            }
         }
     }
 
@@ -99,11 +115,15 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public void close() {
         closed = true;
-        for(SlockClient client : clients) {
-            client.close();
-        }
-        if (callbackExecutorManager != null) {
-            callbackExecutorManager.stop();
+        try {
+            for (SlockClient client : clients) {
+                client.close();
+            }
+        } finally {
+            if (callbackExecutorManager != null) {
+                callbackExecutorManager.stop();
+            }
+            callbackExecutorManager = null;
         }
     }
 
