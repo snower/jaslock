@@ -1,9 +1,10 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.DeferredCommand;
 import io.github.snower.jaslock.commands.*;
-import io.github.snower.jaslock.deferred.DeferredCommandResult;
-import io.github.snower.jaslock.deferred.DeferredManager;
-import io.github.snower.jaslock.deferred.DeferredOption;
+import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.CallbackExecutorManager;
+import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.io.IOException;
@@ -26,7 +27,7 @@ public class SlockClient implements Runnable, ISlockClient {
     private SlockDatabase[] databases;
     private ConcurrentHashMap<String, Command> requests;
     private SlockReplsetClient replsetClient;
-    private DeferredManager deferredManager;
+    private CallbackExecutorManager callbackExecutorManager;
 
     public SlockClient() {
         this("127.0.0.1", 5658);
@@ -52,17 +53,27 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     @Override
-    public void enableDeferred(DeferredOption deferredOption) {
-        if (deferredManager != null) return;
+    public void enableAsyncCallback() {
+        if (callbackExecutorManager != null) return;
 
-        deferredManager = new DeferredManager(deferredOption);
+        callbackExecutorManager = new CallbackExecutorManager(ExecutorOption.DefaultOption);
         if (thread != null && replsetClient == null) {
-            deferredManager.start();
+            callbackExecutorManager.start();
         }
     }
 
-    public void setDeferredManager(DeferredManager deferredManager) {
-        this.deferredManager = deferredManager;
+    @Override
+    public void enableAsyncCallback(ExecutorOption executorOption) {
+        if (callbackExecutorManager != null) return;
+
+        callbackExecutorManager = new CallbackExecutorManager(executorOption);
+        if (thread != null && replsetClient == null) {
+            callbackExecutorManager.start();
+        }
+    }
+
+    public void setCallbackExecutorManager(CallbackExecutorManager callbackExecutorManager) {
+        this.callbackExecutorManager = callbackExecutorManager;
     }
 
     @Override
@@ -75,8 +86,8 @@ public class SlockClient implements Runnable, ISlockClient {
         thread.setDaemon(true);
         thread.start();
 
-        if (deferredManager != null && replsetClient == null) {
-            deferredManager.start();
+        if (callbackExecutorManager != null && replsetClient == null) {
+            callbackExecutorManager.start();
         }
     }
 
@@ -92,8 +103,8 @@ public class SlockClient implements Runnable, ISlockClient {
             thread.setDaemon(true);
             thread.start();
 
-            if (deferredManager != null && replsetClient == null) {
-                deferredManager.start();
+            if (callbackExecutorManager != null && replsetClient == null) {
+                callbackExecutorManager.start();
             }
             return null;
         }
@@ -101,8 +112,8 @@ public class SlockClient implements Runnable, ISlockClient {
         thread.setDaemon(true);
         thread.start();
 
-        if (deferredManager != null && replsetClient == null) {
-            deferredManager.start();
+        if (callbackExecutorManager != null && replsetClient == null) {
+            callbackExecutorManager.start();
         }
         return this;
     }
@@ -133,6 +144,10 @@ public class SlockClient implements Runnable, ISlockClient {
                 }
                 databases[i] = null;
             }
+        }
+
+        if (callbackExecutorManager != null && replsetClient == null) {
+            callbackExecutorManager.stop();
         }
     }
 
@@ -355,12 +370,17 @@ public class SlockClient implements Runnable, ISlockClient {
         if(closed) {
             throw new ClientClosedException();
         }
-        if (deferredManager == null) {
+        if (callbackExecutorManager == null) {
             throw new ClientDeferredDisabledException();
         }
 
         byte[] buf = command.dumpCommand();
         String requestId = new String(command.getRequestId());
+        DeferredCommand deferredCommand = callbackExecutorManager.addCommand(command, callback, deferredCommandResult -> {
+            requests.remove(requestId);
+            callback.accept(deferredCommandResult);
+        });
+
         synchronized (this) {
             if(outputStream == null) {
                 throw new ClientUnconnectException();
@@ -371,6 +391,7 @@ public class SlockClient implements Runnable, ISlockClient {
                 outputStream.write(buf);
             } catch (IOException e) {
                 requests.remove(requestId);
+                deferredCommand.close();
                 try {
                     socket.close();
                 } catch (IOException ignored) {
@@ -378,7 +399,6 @@ public class SlockClient implements Runnable, ISlockClient {
                 throw new ClientOutputStreamException();
             }
         }
-        deferredManager.addCommand(command, callback);
     }
 
     @Override

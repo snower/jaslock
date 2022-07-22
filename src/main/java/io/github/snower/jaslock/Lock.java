@@ -4,7 +4,7 @@ import io.github.snower.jaslock.commands.CommandResult;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
-import io.github.snower.jaslock.deferred.DeferredCommandResult;
+import io.github.snower.jaslock.callback.DeferredCommandResult;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -137,7 +137,7 @@ public class Lock {
                     default:
                         callback.accept(new DeferredCommandResult(command, commandResult, new LockException(command, commandResult)));
                 }
-            } catch (Exception e) {
+            } catch (SlockException e) {
                 callback.accept(new DeferredCommandResult(command, null, e));
             }
         });
@@ -200,7 +200,7 @@ public class Lock {
                     default:
                         callback.accept(new DeferredCommandResult(command, commandResult, new LockException(command, commandResult)));
                 }
-            } catch (Exception e) {
+            } catch (SlockException e) {
                 callback.accept(new DeferredCommandResult(command, null, e));
             }
         });
@@ -231,7 +231,7 @@ public class Lock {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), null, null));
             } catch (LockNotOwnException e) {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), null));
-            } catch (Exception e) {
+            } catch (SlockException e) {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), e));
             }
         });
@@ -250,7 +250,7 @@ public class Lock {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), commandResult, null));
             } catch (LockLockedException e) {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), null));
-            } catch (Exception e) {
+            } catch (SlockException e) {
                 callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), e));
             }
         });

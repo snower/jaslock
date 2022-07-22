@@ -2,8 +2,8 @@ package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
-import io.github.snower.jaslock.deferred.DeferredCommandResult;
-import io.github.snower.jaslock.deferred.DeferredOption;
+import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
@@ -11,7 +11,8 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 public interface ISlockClient {
-    void enableDeferred(DeferredOption deferredOption);
+    void enableAsyncCallback();
+    void enableAsyncCallback(ExecutorOption executorOption);
     void open() throws IOException, ClientUnconnectException;
     ISlockClient tryOpen();
     void close();

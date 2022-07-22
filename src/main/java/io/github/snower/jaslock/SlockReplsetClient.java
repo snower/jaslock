@@ -1,9 +1,9 @@
 package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.*;
-import io.github.snower.jaslock.deferred.DeferredCommandResult;
-import io.github.snower.jaslock.deferred.DeferredManager;
-import io.github.snower.jaslock.deferred.DeferredOption;
+import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.CallbackExecutorManager;
+import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.ClientClosedException;
 import io.github.snower.jaslock.exceptions.ClientDeferredDisabledException;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
@@ -20,7 +20,7 @@ public class SlockReplsetClient implements ISlockClient {
     private volatile SlockClient livedLeaderClient;
     private boolean closed;
     private final SlockDatabase[] databases;
-    private DeferredManager deferredManager;
+    private CallbackExecutorManager callbackExecutorManager;
 
     public SlockReplsetClient(String hosts) {
         this(hosts.split("\\,"));
@@ -36,14 +36,27 @@ public class SlockReplsetClient implements ISlockClient {
     }
 
     @Override
-    public void enableDeferred(DeferredOption deferredOption) {
-        if (deferredManager != null) return;
+    public void enableAsyncCallback() {
+        if (callbackExecutorManager != null) return;
 
-        deferredManager = new DeferredManager(deferredOption);
+        callbackExecutorManager = new CallbackExecutorManager(ExecutorOption.DefaultOption);
         if (!clients.isEmpty()) {
-            deferredManager.start();
+            callbackExecutorManager.start();
             for (SlockClient client : clients) {
-                client.setDeferredManager(deferredManager);
+                client.setCallbackExecutorManager(callbackExecutorManager);
+            }
+        }
+    }
+
+    @Override
+    public void enableAsyncCallback(ExecutorOption executorOption) {
+        if (callbackExecutorManager != null) return;
+
+        callbackExecutorManager = new CallbackExecutorManager(executorOption);
+        if (!clients.isEmpty()) {
+            callbackExecutorManager.start();
+            for (SlockClient client : clients) {
+                client.setCallbackExecutorManager(callbackExecutorManager);
             }
         }
     }
@@ -65,10 +78,10 @@ public class SlockReplsetClient implements ISlockClient {
             throw new ClientUnconnectException();
         }
 
-        if (deferredManager != null) {
-            deferredManager.start();
+        if (callbackExecutorManager != null) {
+            callbackExecutorManager.start();
             for (SlockClient client : clients) {
-                client.setDeferredManager(deferredManager);
+                client.setCallbackExecutorManager(callbackExecutorManager);
             }
         }
     }
@@ -88,6 +101,9 @@ public class SlockReplsetClient implements ISlockClient {
         closed = true;
         for(SlockClient client : clients) {
             client.close();
+        }
+        if (callbackExecutorManager != null) {
+            callbackExecutorManager.stop();
         }
     }
 
@@ -131,7 +147,7 @@ public class SlockReplsetClient implements ISlockClient {
         if(closed) {
             throw new ClientClosedException();
         }
-        if (deferredManager == null) {
+        if (callbackExecutorManager == null) {
             throw new ClientDeferredDisabledException();
         }
 

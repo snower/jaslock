@@ -1,5 +1,6 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.DeferredResult;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.exceptions.*;
 
@@ -203,7 +204,7 @@ public class Event {
         } catch (SlockException ignored) {}
     }
 
-    public void wait(int timeout, Consumer<Exception> callback) throws SlockException {
+    public void wait(int timeout, Consumer<DeferredResult<Object>> callback) throws SlockException {
         if(defaultSeted) {
             synchronized (this) {
                 if(waitLock == null) {
@@ -214,13 +215,13 @@ public class Event {
                 try {
                     deferredCommandResult.getResult();
                 } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                    callback.accept(new EventWaitTimeoutException());
+                    callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
                     return;
                 } catch (Exception e) {
-                    callback.accept(e);
+                    callback.accept(new DeferredResult<>(e));
                     return;
                 }
-                callback.accept(null);
+                callback.accept(new DeferredResult<>(null));
             });
             return;
         }
@@ -234,17 +235,17 @@ public class Event {
             try {
                 deferredCommandResult.getResult();
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                callback.accept(new EventWaitTimeoutException());
+                callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
                 return;
             } catch (Exception e) {
-                callback.accept(e);
+                callback.accept(new DeferredResult<>(e));
                 return;
             }
-            callback.accept(null);
+            callback.accept(new DeferredResult<>(null));
         });
     }
 
-    public void waitAndTimeoutRetryClear(int timeout, Consumer<Exception> callback) throws SlockException {
+    public void waitAndTimeoutRetryClear(int timeout, Consumer<DeferredResult<Object>> callback) throws SlockException {
         if(defaultSeted) {
             synchronized (this) {
                 if(waitLock == null) {
@@ -267,16 +268,16 @@ public class Event {
                         try {
                             eventLock.release();
                         } catch (SlockException ignored2) {}
-                        callback.accept(null);
+                        callback.accept(new DeferredResult<>(null));
                         return;
                     } catch (SlockException ignored2) {}
-                    callback.accept(new EventWaitTimeoutException());
+                    callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
                     return;
                 } catch (Exception e) {
-                    callback.accept(e);
+                    callback.accept(new DeferredResult<>(e));
                     return;
                 }
-                callback.accept(null);
+                callback.accept(new DeferredResult<>(null));
             });
             return;
         }
@@ -290,10 +291,10 @@ public class Event {
             try {
                 deferredCommandResult.getResult();
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                callback.accept(new EventWaitTimeoutException());
+                callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
                 return;
             } catch (Exception e) {
-                callback.accept(e);
+                callback.accept(new DeferredResult<>(e));
                 return;
             }
             synchronized (this) {
@@ -304,7 +305,7 @@ public class Event {
             try {
                 eventLock.release();
             } catch (SlockException ignored) {}
-            callback.accept(null);
+            callback.accept(new DeferredResult<>(null));
         });
     }
 }
