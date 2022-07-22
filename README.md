@@ -8,7 +8,7 @@ High-performance distributed sync service and atomic DB. Provides good multi-cor
 <dependency>
     <groupId>io.github.snower</groupId>
     <artifactId>jaslock</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.11</version>
 </dependency>
 ```
 
@@ -64,6 +64,75 @@ public class App {
             Lock lock = replsetClient.newLock("test", 5, 5);
             lock.acquire();
             lock.release();
+        } catch (SlockException e) {
+            e.printStackTrace();
+        } finally {
+            replsetClient.close();
+        }
+    }
+}
+```
+
+# Async Lock
+
+```java
+package main;
+
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.Event;
+import io.github.snower.jaslock.Lock;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.exceptions.SlockException;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class App {
+    public static void main(String[] args) {
+        SlockClient client = new SlockClient("172.27.214.150", 5658);
+        client.enableAsyncCallback();
+        try {
+            client.open();
+            Lock lock = client.newLock("test", 5, 5);
+            lock.acquire(deferredCommandResult -> {
+                lock.release(deferredCommandResult1 -> {
+                    System.out.println("succed");
+                });
+            });
+        } catch (IOException | SlockException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
+        }
+    }
+}
+```
+
+```java
+package main;
+
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.Event;
+import io.github.snower.jaslock.Lock;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.exceptions.SlockException;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class App {
+    public static void main(String[] args) {
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
+        replsetClient.enableAsyncCallback();
+        try {
+            replsetClient.open();
+            Lock lock = replsetClient.newLock("test", 5, 5);
+            lock.acquire(deferredCommandResult -> {
+                lock.release(deferredCommandResult1 -> {
+                    System.out.println("succed");
+                });
+            });
         } catch (SlockException e) {
             e.printStackTrace();
         } finally {
