@@ -150,9 +150,9 @@ public class App {
         try {
             replsetClient.open();
             Lock lock = replsetClient.newLock("test", 5, 5);
-            CallbackFuture<Boolean> callbackFuture = lock.acquire(callbackFuture -> {});
+            CallbackFuture<Boolean> callbackFuture = lock.acquire(null);
             callbackFuture.get();
-            callbackFuture = lock.release(cf -> {});
+            callbackFuture = lock.release(null);
             callbackFuture.get();
         } catch (IOException | SlockException | ExecutionException | InterruptedException e) {
             e.printStackTrace();

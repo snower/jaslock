@@ -98,7 +98,9 @@ public class CallbackFuture<V> implements Future<V> {
         }
 
         try {
-            callback.accept(this);
+            if (callback != null) {
+                callback.accept(this);
+            }
         } finally {
             if (doneRunnables != null) {
                 for (Runnable runnable : doneRunnables) {

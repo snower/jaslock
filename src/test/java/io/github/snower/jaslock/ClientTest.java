@@ -93,9 +93,9 @@ public class ClientTest
         client.open();
         try {
             Lock lock = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
-            CallbackFuture<Boolean> callbackFuture = lock.acquire(cf -> {});
+            CallbackFuture<Boolean> callbackFuture = lock.acquire(null);
             callbackFuture.get();
-            callbackFuture = lock.release(cf -> {});
+            callbackFuture = lock.release(null);
             callbackFuture.get();
         } finally {
             client.close();
@@ -184,7 +184,7 @@ public class ClientTest
             Assert.assertFalse(event.isSet());
             event.set();
             Assert.assertTrue(event.isSet());
-            CallbackFuture<Boolean> callbackFuture = event.wait(2, cf -> {});
+            CallbackFuture<Boolean> callbackFuture = event.wait(2, null);
             callbackFuture.get();
         } finally {
             client.close();
