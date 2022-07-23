@@ -1,6 +1,6 @@
 package io.github.snower.jaslock;
 
-import io.github.snower.jaslock.callback.DeferredResult;
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.exceptions.*;
 
@@ -204,26 +204,27 @@ public class Event {
         } catch (SlockException ignored) {}
     }
 
-    public void wait(int timeout, Consumer<DeferredResult<Object>> callback) throws SlockException {
+    public CallbackFuture<Boolean> wait(int timeout, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
         if(defaultSeted) {
             synchronized (this) {
                 if(waitLock == null) {
                     waitLock = new Lock(database, eventKey, null, timeout, 0, (short) 0, (byte) 0);
                 }
             }
-            waitLock.acquire(deferredCommandResult -> {
+            waitLock.acquire((byte) 0, callbackCommandResult -> {
                 try {
-                    deferredCommandResult.getResult();
+                    callbackCommandResult.getResult();
                 } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                    callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
+                    callbackFuture.setResult(false, new EventWaitTimeoutException());
                     return;
-                } catch (Exception e) {
-                    callback.accept(new DeferredResult<>(e));
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
                     return;
                 }
-                callback.accept(new DeferredResult<>(null));
+                callbackFuture.setResult(true);
             });
-            return;
+            return callbackFuture;
         }
 
         synchronized (this) {
@@ -231,21 +232,23 @@ public class Event {
                 waitLock = new Lock(database, eventKey, null, timeout | 0x02000000, 0, (short) 1, (byte) 0);
             }
         }
-        waitLock.acquire(deferredCommandResult -> {
+        waitLock.acquire((byte) 0, callbackCommandResult -> {
             try {
-                deferredCommandResult.getResult();
+                callbackCommandResult.getResult();
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
+                callbackFuture.setResult(false, new EventWaitTimeoutException());
                 return;
-            } catch (Exception e) {
-                callback.accept(new DeferredResult<>(e));
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
                 return;
             }
-            callback.accept(new DeferredResult<>(null));
+            callbackFuture.setResult(true);
         });
+        return callbackFuture;
     }
 
-    public void waitAndTimeoutRetryClear(int timeout, Consumer<DeferredResult<Object>> callback) throws SlockException {
+    public CallbackFuture<Boolean> waitAndTimeoutRetryClear(int timeout, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
         if(defaultSeted) {
             synchronized (this) {
                 if(waitLock == null) {
@@ -253,9 +256,9 @@ public class Event {
                 }
             }
 
-            waitLock.acquire(deferredCommandResult -> {
+            waitLock.acquire((byte) 0, callbackCommandResult -> {
                 try {
-                    deferredCommandResult.getResult();
+                    callbackCommandResult.getResult();
                 } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
                     synchronized (this) {
                         if (eventLock == null) {
@@ -268,18 +271,18 @@ public class Event {
                         try {
                             eventLock.release();
                         } catch (SlockException ignored2) {}
-                        callback.accept(new DeferredResult<>(null));
+                        callbackFuture.setResult(true);
                         return;
                     } catch (SlockException ignored2) {}
-                    callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
+                    callbackFuture.setResult(false, new EventWaitTimeoutException());
                     return;
-                } catch (Exception e) {
-                    callback.accept(new DeferredResult<>(e));
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
                     return;
                 }
-                callback.accept(new DeferredResult<>(null));
+                callbackFuture.setResult(true);
             });
-            return;
+            return callbackFuture;
         }
 
         synchronized (this) {
@@ -287,14 +290,14 @@ public class Event {
                 waitLock = new Lock(database, eventKey, null, timeout | 0x02000000, 0, (short) 1, (byte) 0);
             }
         }
-        waitLock.acquire(deferredCommandResult -> {
+        waitLock.acquire((byte) 0, callbackCommandResult -> {
             try {
-                deferredCommandResult.getResult();
+                callbackCommandResult.getResult();
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
-                callback.accept(new DeferredResult<>(new EventWaitTimeoutException()));
+                callbackFuture.setResult(false, new EventWaitTimeoutException());
                 return;
-            } catch (Exception e) {
-                callback.accept(new DeferredResult<>(e));
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
                 return;
             }
             synchronized (this) {
@@ -305,7 +308,8 @@ public class Event {
             try {
                 eventLock.release();
             } catch (SlockException ignored) {}
-            callback.accept(new DeferredResult<>(null));
+            callbackFuture.setResult(true);
         });
+        return callbackFuture;
     }
 }

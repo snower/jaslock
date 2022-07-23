@@ -15,8 +15,8 @@ import java.util.function.Consumer;
 public class CallbackExecutorManager {
     protected final ExecutorOption executorOption;
     protected ExecutorService callbackExecutor;
-    protected ScheduledExecutorService timeoutExecutor;
-    protected ConcurrentHashMap<Long, List<DeferredCommand>> timeoutQueues;
+    protected ScheduledExecutorService timeoutScheduledExecutor;
+    protected ConcurrentHashMap<Long, List<CallbackCommand>> timeoutQueues;
     protected long currentTimeoutAt;
     protected boolean isExternCallbackExecutor;
     protected boolean isExternTimeoutExecutor;
@@ -36,21 +36,21 @@ public class CallbackExecutorManager {
         this.isExternCallbackExecutor = true;
     }
 
-    public CallbackExecutorManager(ScheduledExecutorService timeoutExecutor) {
+    public CallbackExecutorManager(ScheduledExecutorService timeoutScheduledExecutor) {
         this.executorOption = ExecutorOption.DefaultOption;
         this.currentTimeoutAt = (new Date()).getTime() / 1000;
         this.isRuning = false;
-        this.timeoutExecutor = timeoutExecutor;
+        this.timeoutScheduledExecutor = timeoutScheduledExecutor;
         this.isExternTimeoutExecutor = true;
     }
 
-    public CallbackExecutorManager(ExecutorService callbackExecutor, ScheduledExecutorService timeoutExecutor) {
+    public CallbackExecutorManager(ExecutorService callbackExecutor, ScheduledExecutorService timeoutScheduledExecutor) {
         this.executorOption = ExecutorOption.DefaultOption;
         this.currentTimeoutAt = (new Date()).getTime() / 1000;
         this.isRuning = false;
         this.callbackExecutor = callbackExecutor;
         this.isExternCallbackExecutor = true;
-        this.timeoutExecutor = timeoutExecutor;
+        this.timeoutScheduledExecutor = timeoutScheduledExecutor;
         this.isExternTimeoutExecutor = true;
     }
 
@@ -62,25 +62,25 @@ public class CallbackExecutorManager {
                     TimeUnit.SECONDS, new LinkedBlockingQueue<>());
             isExternCallbackExecutor = false;
         }
-        if (timeoutExecutor == null) {
-            timeoutExecutor = Executors.newSingleThreadScheduledExecutor();
+        if (timeoutScheduledExecutor == null) {
+            timeoutScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
             isExternTimeoutExecutor = false;
         }
         timeoutQueues = new ConcurrentHashMap<>();
 
-        timeoutExecutor.scheduleAtFixedRate(() -> {
+        timeoutScheduledExecutor.scheduleAtFixedRate(() -> {
             long now = (new Date()).getTime() / 1000;
             while (currentTimeoutAt <  now) {
-                List<DeferredCommand> timeoutAtQueues = timeoutQueues.remove(currentTimeoutAt);
+                List<CallbackCommand> timeoutAtQueues = timeoutQueues.remove(currentTimeoutAt);
                 if (timeoutAtQueues != null) {
-                    for (DeferredCommand deferredCommand : timeoutAtQueues) {
-                        synchronized (deferredCommand) {
-                            if (deferredCommand.isFinished()) return;
-                            deferredCommand.close();
+                    for (CallbackCommand callbackCommand : timeoutAtQueues) {
+                        synchronized (callbackCommand) {
+                            if (callbackCommand.isFinished()) return;
+                            callbackCommand.close();
                         }
 
                         callbackExecutor.submit(() -> {
-                            deferredCommand.getTimeoutCallback().accept(new DeferredCommandResult(deferredCommand.getCommand(),
+                            callbackCommand.getTimeoutCallback().accept(new CallbackCommandResult(callbackCommand.getCommand(),
                                     null, new ClientCommandTimeoutException()));
                         });
                     }
@@ -94,13 +94,13 @@ public class CallbackExecutorManager {
     public void stop() {
         if (!isRuning) return;
 
-        if (!isExternCallbackExecutor && timeoutExecutor != null) {
-            timeoutExecutor.shutdown();
+        if (!isExternCallbackExecutor && timeoutScheduledExecutor != null) {
+            timeoutScheduledExecutor.shutdown();
             try {
-                timeoutExecutor.awaitTermination(60, TimeUnit.SECONDS);
+                timeoutScheduledExecutor.awaitTermination(60, TimeUnit.SECONDS);
             } catch (InterruptedException ignored) {}
         }
-        timeoutExecutor = null;
+        timeoutScheduledExecutor = null;
         if (!isExternTimeoutExecutor && callbackExecutor != null) {
             callbackExecutor.shutdown();
             try {
@@ -112,34 +112,34 @@ public class CallbackExecutorManager {
         isRuning = false;
     }
 
-    public DeferredCommand addCommand(Command command, Consumer<DeferredCommandResult> callback, Consumer<DeferredCommandResult> timeoutCallback) throws ClientAsyncCallbackStopedException {
+    public CallbackCommand addCommand(Command command, Consumer<CallbackCommandResult> callback, Consumer<CallbackCommandResult> timeoutCallback) throws ClientAsyncCallbackStopedException {
         if (!isRuning) {
             throw new ClientAsyncCallbackStopedException();
         }
 
-        DeferredCommand deferredCommand = new DeferredCommand(command, callback, timeoutCallback);
+        CallbackCommand callbackCommand = new CallbackCommand(command, callback, timeoutCallback);
         int timeout = command.setWaiterCallback(commandResult -> {
-            synchronized (deferredCommand) {
-                if (deferredCommand.isFinished()) return;
-                deferredCommand.close();
+            synchronized (callbackCommand) {
+                if (callbackCommand.isFinished()) return;
+                callbackCommand.close();
             }
 
             callbackExecutor.submit(() -> {
                 if (commandResult == null) {
-                    callback.accept(new DeferredCommandResult(command, null, new ClientClosedException()));
+                    callback.accept(new CallbackCommandResult(command, null, new ClientClosedException()));
                 } else {
-                    callback.accept(new DeferredCommandResult(command, commandResult, null));
+                    callback.accept(new CallbackCommandResult(command, commandResult, null));
                 }
             });
         });
-        deferredCommand.setTimeoutAt(Math.max((new Date()).getTime() / 1000 + timeout, currentTimeoutAt + 1));
-        List<DeferredCommand> timeoutAtQueues = timeoutQueues.get(deferredCommand.getTimeoutAt());
+        callbackCommand.setTimeoutAt(Math.max((new Date()).getTime() / 1000 + timeout, currentTimeoutAt + 1));
+        List<CallbackCommand> timeoutAtQueues = timeoutQueues.get(callbackCommand.getTimeoutAt());
         if (timeoutAtQueues == null) {
             synchronized (this) {
-                timeoutAtQueues = timeoutQueues.computeIfAbsent(deferredCommand.getTimeoutAt(), k -> Collections.synchronizedList(new LinkedList<>()));
+                timeoutAtQueues = timeoutQueues.computeIfAbsent(callbackCommand.getTimeoutAt(), k -> Collections.synchronizedList(new LinkedList<>()));
             }
         }
-        deferredCommand.addTimeoutQueues(timeoutAtQueues);
-        return deferredCommand;
+        callbackCommand.addTimeoutQueues(timeoutAtQueues);
+        return callbackCommand;
     }
 }

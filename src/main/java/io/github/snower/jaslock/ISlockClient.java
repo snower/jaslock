@@ -3,7 +3,7 @@ package io.github.snower.jaslock;
 import io.github.snower.jaslock.callback.CallbackExecutorManager;
 import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
-import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
@@ -19,7 +19,7 @@ public interface ISlockClient {
     ISlockClient tryOpen();
     void close();
     CommandResult sendCommand(Command command) throws SlockException;
-    void sendCommand(Command command, Consumer<DeferredCommandResult> callback) throws SlockException;
+    void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException;
     boolean ping() throws SlockException;
     SlockDatabase selectDatabase(byte dbId);
     Lock newLock(byte[] lockKey, int timeout, int expried);

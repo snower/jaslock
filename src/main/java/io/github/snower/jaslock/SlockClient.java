@@ -1,8 +1,8 @@
 package io.github.snower.jaslock;
 
-import io.github.snower.jaslock.callback.DeferredCommand;
+import io.github.snower.jaslock.callback.CallbackCommand;
 import io.github.snower.jaslock.commands.*;
-import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.CallbackExecutorManager;
 import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.*;
@@ -383,7 +383,7 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     @Override
-    public void sendCommand(Command command, Consumer<DeferredCommandResult> callback) throws SlockException {
+    public void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException {
         if(closed) {
             throw new ClientClosedException();
         }
@@ -393,9 +393,9 @@ public class SlockClient implements Runnable, ISlockClient {
 
         byte[] buf = command.dumpCommand();
         String requestId = new String(command.getRequestId());
-        DeferredCommand deferredCommand = callbackExecutorManager.addCommand(command, callback, deferredCommandResult -> {
+        CallbackCommand callbackCommand = callbackExecutorManager.addCommand(command, callback, callbackCommandResult -> {
             requests.remove(requestId);
-            callback.accept(deferredCommandResult);
+            callback.accept(callbackCommandResult);
         });
 
         synchronized (this) {
@@ -408,7 +408,7 @@ public class SlockClient implements Runnable, ISlockClient {
                 outputStream.write(buf);
             } catch (IOException e) {
                 requests.remove(requestId);
-                deferredCommand.close();
+                callbackCommand.close();
                 try {
                     socket.close();
                 } catch (IOException ignored) {

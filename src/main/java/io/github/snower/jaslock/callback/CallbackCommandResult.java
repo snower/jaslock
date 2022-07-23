@@ -4,12 +4,12 @@ import io.github.snower.jaslock.commands.Command;
 import io.github.snower.jaslock.commands.CommandResult;
 import io.github.snower.jaslock.exceptions.SlockException;
 
-public class DeferredCommandResult {
+public class CallbackCommandResult {
     private final Command command;
     private final CommandResult commandResult;
     private final SlockException exception;
 
-    public DeferredCommandResult(Command command, CommandResult commandResult, SlockException exception) {
+    public CallbackCommandResult(Command command, CommandResult commandResult, SlockException exception) {
         this.command = command;
         this.commandResult = commandResult;
         this.exception = exception;
@@ -23,7 +23,7 @@ public class DeferredCommandResult {
         return commandResult;
     }
 
-    public Exception getException() {
+    public SlockException getException() {
         return exception;
     }
 

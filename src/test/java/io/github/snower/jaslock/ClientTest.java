@@ -2,14 +2,15 @@ package io.github.snower.jaslock;
 
 import static org.junit.Assert.assertTrue;
 
-import io.github.snower.jaslock.callback.DeferredCommandResult;
-import io.github.snower.jaslock.callback.DeferredResult;
+import io.github.snower.jaslock.callback.CallbackCommandResult;
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.exceptions.SlockException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -65,20 +66,20 @@ public class ClientTest
             Lock lock = client.newLock("test_async1".getBytes(StandardCharsets.UTF_8), 5, 5);
             try {
                 Semaphore waiter = new Semaphore(1);
-                AtomicReference<DeferredCommandResult> deferredCommandResult = new AtomicReference<>();
+                AtomicReference<CallbackCommandResult> callbackCommandResult = new AtomicReference<>();
                 waiter.acquire();
-                lock.acquire(dcr -> {
-                    deferredCommandResult.set(dcr);
+                lock.acquire((byte) 0, dcr -> {
+                    callbackCommandResult.set(dcr);
                     waiter.release();
                 });
                 waiter.acquire();
-                deferredCommandResult.get().getResult();
-                lock.release(dcr -> {
-                    deferredCommandResult.set(dcr);
+                callbackCommandResult.get().getResult();
+                lock.release((byte) 0, dcr -> {
+                    callbackCommandResult.set(dcr);
                     waiter.release();
                 });
                 waiter.acquire();
-                deferredCommandResult.get().getResult();
+                callbackCommandResult.get().getResult();
             } catch (InterruptedException e) {}
         } finally {
             client.close();
@@ -86,29 +87,16 @@ public class ClientTest
     }
 
     @Test
-    public void testReplsetClientAsyncLock() throws SlockException {
+    public void testReplsetClientAsyncLock() throws SlockException, ExecutionException, InterruptedException {
         SlockReplsetClient client = new SlockReplsetClient(new String[]{clientHost + ":" + clinetPort});
         client.enableAsyncCallback();
         client.open();
         try {
             Lock lock = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
-            try {
-                Semaphore waiter = new Semaphore(1);
-                AtomicReference<DeferredCommandResult> deferredCommandResult = new AtomicReference<>();
-                waiter.acquire();
-                lock.acquire(dcr -> {
-                    deferredCommandResult.set(dcr);
-                    waiter.release();
-                });
-                waiter.acquire();
-                deferredCommandResult.get().getResult();
-                lock.release(dcr -> {
-                    deferredCommandResult.set(dcr);
-                    waiter.release();
-                });
-                waiter.acquire();
-                deferredCommandResult.get().getResult();
-            } catch (InterruptedException e) {}
+            CallbackFuture<Boolean> callbackFuture = lock.acquire(cf -> {});
+            callbackFuture.get();
+            callbackFuture = lock.release(cf -> {});
+            callbackFuture.get();
         } finally {
             client.close();
         }
@@ -167,14 +155,14 @@ public class ClientTest
             Assert.assertTrue(event.isSet());
             try {
                 Semaphore waiter = new Semaphore(1);
-                AtomicReference<DeferredResult<Object>> deferredResult = new AtomicReference<>();
+                AtomicReference<CallbackFuture<Boolean>> callbackResult = new AtomicReference<>();
                 waiter.acquire();
                 event.wait(2, dr -> {
-                    deferredResult.set(dr);
+                    callbackResult.set(dr);
                     waiter.release();
                 });
                 waiter.acquire();
-                deferredResult.get().getResult();
+                callbackResult.get().getResult();
             } catch (InterruptedException e) {}
         } finally {
             client.close();
@@ -182,7 +170,7 @@ public class ClientTest
     }
 
     @Test
-    public void testEventAsyncDefaultUnseted() throws IOException, SlockException {
+    public void testEventAsyncDefaultUnseted() throws IOException, SlockException, ExecutionException, InterruptedException {
         SlockClient client = new SlockClient(clientHost, clinetPort);
         client.enableAsyncCallback();
         client.open();
@@ -196,17 +184,8 @@ public class ClientTest
             Assert.assertFalse(event.isSet());
             event.set();
             Assert.assertTrue(event.isSet());
-            try {
-                Semaphore waiter = new Semaphore(1);
-                AtomicReference<DeferredResult<Object>> deferredResult = new AtomicReference<>();
-                waiter.acquire();
-                event.wait(2, dr -> {
-                    deferredResult.set(dr);
-                    waiter.release();
-                });
-                waiter.acquire();
-                deferredResult.get().getResult();
-            } catch (InterruptedException e) {}
+            CallbackFuture<Boolean> callbackFuture = event.wait(2, cf -> {});
+            callbackFuture.get();
         } finally {
             client.close();
         }

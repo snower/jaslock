@@ -1,10 +1,11 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.commands.CommandResult;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
-import io.github.snower.jaslock.callback.DeferredCommandResult;
+import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -110,35 +111,35 @@ public class Lock {
         }
     }
 
-    public void acquire(byte flag, Consumer<DeferredCommandResult> callback) throws SlockException {
+    public void acquire(byte flag, Consumer<CallbackCommandResult> callback) throws SlockException {
         LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, flag, database.getDbId(), lockKey,
                 lockId, timeout, expried, count, rCount);
-        database.getClient().sendCommand(command, deferredCommandResult -> {
+        database.getClient().sendCommand(command, callbackCommandResult -> {
             try {
-                CommandResult commandResult = deferredCommandResult.getResult();
+                CommandResult commandResult = callbackCommandResult.getResult();
                 if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
-                    callback.accept(new DeferredCommandResult(command, commandResult, null));
+                    callback.accept(new CallbackCommandResult(command, commandResult, null));
                     return;
                 }
 
                 switch (commandResult.getResult()) {
                     case ICommand.COMMAND_RESULT_LOCKED_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockLockedException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockLockedException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_UNLOCK_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockUnlockedException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockUnlockedException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_UNOWN_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockNotOwnException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockNotOwnException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_TIMEOUT:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockTimeoutException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockTimeoutException(command, commandResult)));
                         return;
                     default:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockException(command, commandResult)));
                 }
             } catch (SlockException e) {
-                callback.accept(new DeferredCommandResult(command, null, e));
+                callback.accept(new CallbackCommandResult(command, null, e));
             }
         });
     }
@@ -147,8 +148,17 @@ public class Lock {
         acquire((byte) 0);
     }
 
-    public void acquire(Consumer<DeferredCommandResult> callback) throws SlockException {
-        acquire((byte) 0, callback);
+    public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        acquire((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public LockCommandResult release(byte flag) throws SlockException {
@@ -173,35 +183,35 @@ public class Lock {
         }
     }
 
-    public void release(byte flag, Consumer<DeferredCommandResult> callback) throws SlockException {
+    public void release(byte flag, Consumer<CallbackCommandResult> callback) throws SlockException {
         LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, flag, database.getDbId(), lockKey,
                 lockId, timeout, expried, count, rCount);
-        database.getClient().sendCommand(command, deferredCommandResult -> {
+        database.getClient().sendCommand(command, callbackCommandResult -> {
             try {
-                CommandResult commandResult = deferredCommandResult.getResult();
+                CommandResult commandResult = callbackCommandResult.getResult();
                 if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
-                    callback.accept(new DeferredCommandResult(command, commandResult, null));
+                    callback.accept(new CallbackCommandResult(command, commandResult, null));
                     return;
                 }
 
                 switch (commandResult.getResult()) {
                     case ICommand.COMMAND_RESULT_LOCKED_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockLockedException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockLockedException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_UNLOCK_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockUnlockedException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockUnlockedException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_UNOWN_ERROR:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockNotOwnException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockNotOwnException(command, commandResult)));
                         return;
                     case ICommand.COMMAND_RESULT_TIMEOUT:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockTimeoutException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockTimeoutException(command, commandResult)));
                         return;
                     default:
-                        callback.accept(new DeferredCommandResult(command, commandResult, new LockException(command, commandResult)));
+                        callback.accept(new CallbackCommandResult(command, commandResult, new LockException(command, commandResult)));
                 }
             } catch (SlockException e) {
-                callback.accept(new DeferredCommandResult(command, null, e));
+                callback.accept(new CallbackCommandResult(command, null, e));
             }
         });
     }
@@ -211,8 +221,17 @@ public class Lock {
         release((byte) 0);
     }
 
-    public void release(Consumer<DeferredCommandResult> callback) throws SlockException {
-        release((byte) 0, callback);
+    public CallbackFuture<Boolean> release(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        release((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public CommandResult show() throws SlockException {
@@ -224,15 +243,15 @@ public class Lock {
         return null;
     }
 
-    public void show(Consumer<DeferredCommandResult> callback) throws SlockException {
-        acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED, deferredCommandResult -> {
+    public void show(Consumer<CallbackCommandResult> callback) throws SlockException {
+        acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED, callbackCommandResult -> {
             try {
-                deferredCommandResult.getResult();
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), null, null));
+                callbackCommandResult.getResult();
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), null, null));
             } catch (LockNotOwnException e) {
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), null));
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), callbackCommandResult.getCommandResult(), null));
             } catch (SlockException e) {
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), e));
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), callbackCommandResult.getCommandResult(), e));
             }
         });
     }
@@ -243,15 +262,15 @@ public class Lock {
         } catch (LockLockedException ignored) {}
     }
 
-    public void update(Consumer<DeferredCommandResult> callback) throws SlockException {
-        acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, deferredCommandResult -> {
+    public void update(Consumer<CallbackCommandResult> callback) throws SlockException {
+        acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, callbackCommandResult -> {
             try {
-                CommandResult commandResult = deferredCommandResult.getResult();
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), commandResult, null));
+                CommandResult commandResult = callbackCommandResult.getResult();
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), commandResult, null));
             } catch (LockLockedException e) {
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), null));
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), callbackCommandResult.getCommandResult(), null));
             } catch (SlockException e) {
-                callback.accept(new DeferredCommandResult(deferredCommandResult.getCommand(), deferredCommandResult.getCommandResult(), e));
+                callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), callbackCommandResult.getCommandResult(), e));
             }
         });
     }
@@ -261,7 +280,7 @@ public class Lock {
         lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED);
     }
 
-    public void releaseHead(Consumer<DeferredCommandResult> callback) throws SlockException {
+    public void releaseHead(Consumer<CallbackCommandResult> callback) throws SlockException {
         Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
         lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, callback);
     }
@@ -270,7 +289,7 @@ public class Lock {
         return acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT));
     }
 
-    public void releaseHeadRetoLockWait(Consumer<DeferredCommandResult> callback) throws SlockException {
+    public void releaseHeadRetoLockWait(Consumer<CallbackCommandResult> callback) throws SlockException {
         acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), callback);
     }
 }

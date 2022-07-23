@@ -5,15 +5,15 @@ import io.github.snower.jaslock.commands.Command;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class DeferredCommand {
+public class CallbackCommand {
     private Command command;
-    private Consumer<DeferredCommandResult> callback;
-    private Consumer<DeferredCommandResult> timeoutCallback;
-    private List<DeferredCommand> timeoutQueues;
+    private Consumer<CallbackCommandResult> callback;
+    private Consumer<CallbackCommandResult> timeoutCallback;
+    private List<CallbackCommand> timeoutQueues;
     private long timeoutAt;
     private boolean finished;
 
-    public DeferredCommand(Command command, Consumer<DeferredCommandResult> callback, Consumer<DeferredCommandResult> timeoutCallback) {
+    public CallbackCommand(Command command, Consumer<CallbackCommandResult> callback, Consumer<CallbackCommandResult> timeoutCallback) {
         this.command = command;
         this.callback = callback;
         this.timeoutCallback = timeoutCallback;
@@ -25,11 +25,11 @@ public class DeferredCommand {
         return command;
     }
 
-    public Consumer<DeferredCommandResult> getCallback() {
+    public Consumer<CallbackCommandResult> getCallback() {
         return callback;
     }
 
-    public Consumer<DeferredCommandResult> getTimeoutCallback() {
+    public Consumer<CallbackCommandResult> getTimeoutCallback() {
         return timeoutCallback;
     }
 
@@ -41,7 +41,7 @@ public class DeferredCommand {
         this.timeoutAt = timeoutAt;
     }
 
-    public void addTimeoutQueues(List<DeferredCommand> timeoutQueues) {
+    public void addTimeoutQueues(List<CallbackCommand> timeoutQueues) {
         this.timeoutQueues = timeoutQueues;
         this.timeoutQueues.add(this);
     }
