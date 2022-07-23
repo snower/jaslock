@@ -149,7 +149,7 @@ public class LockCommand extends Command {
     public int setWaiterCallback(Consumer<CommandResult> waiterCallback) {
         if (waiter != null) return -1;
         this.waiterCallback = waiterCallback;
-        return (int) ((timeout & 0xffffL) + 1);
+        return (int) ((timeout & 0xffffL) + 5);
     }
 
     @Override
@@ -158,7 +158,7 @@ public class LockCommand extends Command {
             return false;
         }
         try {
-            return waiter.tryAcquire(1, (timeout & 0xffffL) + 1, TimeUnit.SECONDS);
+            return waiter.tryAcquire(1, (timeout & 0xffffL) + 5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             return false;
         }

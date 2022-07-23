@@ -1,9 +1,7 @@
 package io.github.snower.jaslock.callback;
 
 import io.github.snower.jaslock.commands.Command;
-import io.github.snower.jaslock.exceptions.ClientAsyncCallbackStopedException;
-import io.github.snower.jaslock.exceptions.ClientClosedException;
-import io.github.snower.jaslock.exceptions.ClientCommandTimeoutException;
+import io.github.snower.jaslock.exceptions.*;
 
 import java.util.Collections;
 import java.util.Date;
@@ -59,7 +57,7 @@ public class CallbackExecutorManager {
 
         if (callbackExecutor == null) {
             callbackExecutor = new ThreadPoolExecutor(executorOption.getWorkerCount(), executorOption.getMaxWorkerCount(), executorOption.getWorkerKeepAliveTime(),
-                    TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+                    executorOption.getWorkerKeepAliveTimeUnit(), new LinkedBlockingQueue<>());
             isExternCallbackExecutor = false;
         }
         if (timeoutScheduledExecutor == null) {
@@ -112,7 +110,7 @@ public class CallbackExecutorManager {
         isRuning = false;
     }
 
-    public CallbackCommand addCommand(Command command, Consumer<CallbackCommandResult> callback, Consumer<CallbackCommandResult> timeoutCallback) throws ClientAsyncCallbackStopedException {
+    public CallbackCommand addCommand(Command command, Consumer<CallbackCommandResult> callback, Consumer<CallbackCommandResult> timeoutCallback) throws SlockException {
         if (!isRuning) {
             throw new ClientAsyncCallbackStopedException();
         }
@@ -132,6 +130,10 @@ public class CallbackExecutorManager {
                 }
             });
         });
+        if (timeout <= 0) {
+            throw new ClientAsyncCallbackWaitedException();
+        }
+
         callbackCommand.setTimeoutAt(Math.max((new Date()).getTime() / 1000 + timeout, currentTimeoutAt + 1));
         List<CallbackCommand> timeoutAtQueues = timeoutQueues.get(callbackCommand.getTimeoutAt());
         if (timeoutAtQueues == null) {
