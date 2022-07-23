@@ -1,5 +1,6 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.LockTimeoutException;
 import io.github.snower.jaslock.exceptions.SlockException;
@@ -9,6 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.function.Consumer;
 
 public class TokenBucketFlow {
     private final SlockDatabase database;
@@ -71,5 +73,59 @@ public class TokenBucketFlow {
             flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
             flowLock.acquire();
         }
+    }
+
+    public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        Lock flowLock;
+        if(period < 3) {
+            synchronized (this) {
+                int expried = (int)Math.ceil(period * 1000) | 0x04000000;
+                expried = expried | (expriedFlag << 16);
+                flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+            }
+            flowLock.acquire((byte) 0, callbackCommandResult -> {
+                try {
+                    callbackCommandResult.getResult();
+                    callbackFuture.setResult(true);
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
+                }
+            });
+            return callbackFuture;
+        }
+
+        synchronized (this) {
+            long now = new Date().getTime() / 1000L;
+            int expried = (int) (((long)Math.ceil(period)) - (now % ((long) Math.ceil((period)))));
+            expried = expried | (expriedFlag << 16);
+            flowLock = new Lock(database, flowKey, LockCommand.genLockId(), 0, expried, count, (byte) 0);
+        }
+
+        flowLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockTimeoutException e) {
+                int expried = (int) Math.ceil(period);
+                expried = expried | (expriedFlag << 16);
+                Lock reflowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                try {
+                    reflowLock.acquire(recallbackCommandResult -> {
+                        try {
+                            recallbackCommandResult.getResult();
+                            callbackFuture.setResult(true);
+                        } catch (SlockException ex) {
+                            callbackFuture.setResult(false, e);
+                        }
+                    });
+                } catch (SlockException ex) {
+                    callbackFuture.setResult(false, e);
+                }
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 }

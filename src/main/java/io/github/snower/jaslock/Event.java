@@ -75,6 +75,45 @@ public class Event {
         }
     }
 
+    public CallbackFuture<Boolean> clear(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        if(defaultSeted) {
+            synchronized (this) {
+                if(eventLock == null) {
+                    eventLock = new Lock(database, eventKey, eventKey, timeout, expried, (short) 0, (byte) 0);
+                }
+            }
+            eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, callbackCommandResult -> {
+                try {
+                    callbackCommandResult.getResult();
+                    callbackFuture.setResult(true);
+                } catch (LockLockedException ignored) {
+                    callbackFuture.setResult(true);
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
+                }
+            });
+            return callbackFuture;
+        }
+
+        synchronized (this) {
+            if(eventLock == null) {
+                eventLock = new Lock(database, eventKey, eventKey, timeout, expried, (short) 1, (byte) 0);
+            }
+        }
+        eventLock.release((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockUnlockedException ignored) {
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
+    }
+
     public void set() throws SlockException {
         if(defaultSeted) {
             synchronized (this) {
@@ -98,6 +137,45 @@ public class Event {
             eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
         } catch (LockLockedException ignored) {
         }
+    }
+
+    public CallbackFuture<Boolean> set(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        if(defaultSeted) {
+            synchronized (this) {
+                if(eventLock == null) {
+                    eventLock = new Lock(database, eventKey, eventKey, timeout, expried, (short) 0, (byte) 0);
+                }
+            }
+            eventLock.release((byte) 0, callbackCommandResult -> {
+                try {
+                    callbackCommandResult.getResult();
+                    callbackFuture.setResult(true);
+                } catch (LockUnlockedException ignored) {
+                    callbackFuture.setResult(true);
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
+                }
+            });
+            return callbackFuture;
+        }
+
+        synchronized (this) {
+            if(eventLock == null) {
+                eventLock = new Lock(database, eventKey, eventKey, timeout, expried, (short) 1, (byte) 0);
+            }
+        }
+        eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockLockedException ignored) {
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public boolean isSet() throws SlockException {
@@ -126,6 +204,45 @@ public class Event {
             return false;
         }
         return true;
+    }
+
+    public CallbackFuture<Boolean> isSet(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        if(defaultSeted) {
+            synchronized (this) {
+                if(checkLock == null) {
+                    checkLock = new Lock(database, eventKey, null, 0, 0, (short) 0, (byte) 0);
+                }
+            }
+            checkLock.acquire((byte) 0, callbackCommandResult -> {
+                try {
+                    callbackCommandResult.getResult();
+                    callbackFuture.setResult(true);
+                } catch (LockTimeoutException ignored) {
+                    callbackFuture.setResult(false);
+                } catch (SlockException e) {
+                    callbackFuture.setResult(false, e);
+                }
+            });
+            return callbackFuture;
+        }
+
+        synchronized (this) {
+            if(checkLock == null) {
+                checkLock = new Lock(database, eventKey, null, 0x02000000, 0, (short) 1, (byte) 0);
+            }
+        }
+        checkLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockNotOwnException | LockTimeoutException ignored) {
+                callbackFuture.setResult(false);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public void wait(int timeout) throws SlockException {

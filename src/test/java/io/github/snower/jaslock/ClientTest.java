@@ -177,14 +177,21 @@ public class ClientTest
 
         try {
             Event event = client.newEvent("event_async2".getBytes(StandardCharsets.UTF_8), 5, 60, false);
-            Assert.assertFalse(event.isSet());
-            event.set();
-            Assert.assertTrue(event.isSet());
-            event.clear();
-            Assert.assertFalse(event.isSet());
-            event.set();
-            Assert.assertTrue(event.isSet());
-            CallbackFuture<Boolean> callbackFuture = event.wait(2, null);
+            CallbackFuture<Boolean> callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.clear(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.wait(2, null);
             callbackFuture.get();
         } finally {
             client.close();
@@ -253,5 +260,83 @@ public class ClientTest
         testLock.acquire();
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
         testLock.acquire();
+    }
+
+    @Test
+    public void testMaxConcurrentFlow() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        try {
+            MaxConcurrentFlow maxConcurrentFlow1 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            MaxConcurrentFlow maxConcurrentFlow2 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            maxConcurrentFlow1.acquire();
+            maxConcurrentFlow2.acquire();
+            maxConcurrentFlow1.release();
+            maxConcurrentFlow2.release();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testMaxConcurrentFlowAsync() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            MaxConcurrentFlow maxConcurrentFlow1 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            MaxConcurrentFlow maxConcurrentFlow2 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            CallbackFuture<Boolean> callbackFuture = maxConcurrentFlow1.acquire(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow2.acquire(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow1.release(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow2.release(null);
+            callbackFuture.get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testTokenBucketFlow() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        try {
+            TokenBucketFlow tokenBucketFlow1 = client.newTokenBucketFlow("tokenbucketflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            TokenBucketFlow tokenBucketFlow2 = client.newTokenBucketFlow("tokenbucketflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            tokenBucketFlow1.acquire();
+            tokenBucketFlow2.acquire();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testTokenBucketFlowAsync() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            TokenBucketFlow tokenBucketFlow1 = client.newTokenBucketFlow("tokenbucketflow2".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            TokenBucketFlow tokenBucketFlow2 = client.newTokenBucketFlow("tokenbucketflow2".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            CallbackFuture<Boolean> callbackFuture = tokenBucketFlow1.acquire(null);
+            callbackFuture.get();
+            callbackFuture = tokenBucketFlow2.acquire(null);
+            callbackFuture.get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
+        }
     }
 }
