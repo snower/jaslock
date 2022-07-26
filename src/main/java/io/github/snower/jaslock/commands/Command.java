@@ -7,6 +7,7 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class Command implements ICommand {
     private static final AtomicInteger requestIdIndex = new AtomicInteger(0);
@@ -16,6 +17,7 @@ public class Command implements ICommand {
     protected byte commandType;
     protected byte[] requestId;
     protected Semaphore waiter;
+    protected Consumer<CommandResult> waiterCallback;
     public CommandResult commandResult;
 
     public Command(byte commandType) {
@@ -88,6 +90,7 @@ public class Command implements ICommand {
     }
 
     public boolean createWaiter() {
+        if (waiterCallback != null) return false;
         waiter = new Semaphore(1);
         try {
             waiter.acquire();
@@ -98,8 +101,17 @@ public class Command implements ICommand {
         return true;
     }
 
+    public int setWaiterCallback(Consumer<CommandResult> waiterCallback) {
+        if (waiter != null) return -1;
+        this.waiterCallback = waiterCallback;
+        return 5;
+    }
+
     public boolean wakeupWaiter() {
         if (waiter == null) {
+            if (waiterCallback != null) {
+                waiterCallback.accept(this.commandResult);
+            }
             return false;
         }
         waiter.release();

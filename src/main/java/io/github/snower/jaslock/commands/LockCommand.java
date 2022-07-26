@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class LockCommand extends Command {
     private static final AtomicInteger lockIdIndex = new AtomicInteger(0);
@@ -145,12 +146,19 @@ public class LockCommand extends Command {
     }
 
     @Override
+    public int setWaiterCallback(Consumer<CommandResult> waiterCallback) {
+        if (waiter != null) return -1;
+        this.waiterCallback = waiterCallback;
+        return (int) ((timeout & 0xffffL) + 5);
+    }
+
+    @Override
     public boolean waiteWaiter() {
         if (waiter == null) {
             return false;
         }
         try {
-            return waiter.tryAcquire(1, (timeout & 0xffffL) + 1, TimeUnit.SECONDS);
+            return waiter.tryAcquire(1, (timeout & 0xffffL) + 5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             return false;
         }

@@ -1,12 +1,17 @@
 package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.commands.*;
+import io.github.snower.jaslock.callback.CallbackCommandResult;
+import io.github.snower.jaslock.callback.CallbackExecutorManager;
+import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.exceptions.ClientClosedException;
+import io.github.snower.jaslock.exceptions.ClientAsyncCallbackDisabledException;
 import io.github.snower.jaslock.exceptions.ClientUnconnectException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 
 public class SlockReplsetClient implements ISlockClient {
     private final String[] hosts;
@@ -15,6 +20,7 @@ public class SlockReplsetClient implements ISlockClient {
     private volatile SlockClient livedLeaderClient;
     private boolean closed;
     private final SlockDatabase[] databases;
+    private CallbackExecutorManager callbackExecutorManager;
 
     public SlockReplsetClient(String hosts) {
         this(hosts.split("\\,"));
@@ -29,6 +35,63 @@ public class SlockReplsetClient implements ISlockClient {
         this.databases = new SlockDatabase[256];
     }
 
+    public SlockReplsetClient(String hosts, boolean enableAsyncCallback) {
+        this(hosts.split("\\,"));
+        if (enableAsyncCallback) {
+            this.enableAsyncCallback();
+        }
+    }
+
+    public SlockReplsetClient(String[] hosts, boolean enableAsyncCallback) {
+        this(hosts);
+        if (enableAsyncCallback) {
+            this.enableAsyncCallback();
+        }
+    }
+
+    @Override
+    public boolean enableAsyncCallback() {
+        if (callbackExecutorManager != null) return false;
+
+        callbackExecutorManager = new CallbackExecutorManager(ExecutorOption.DefaultOption);
+        if (!clients.isEmpty()) {
+            callbackExecutorManager.start();
+            for (SlockClient client : clients) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean enableAsyncCallback(ExecutorOption executorOption) {
+        if (callbackExecutorManager != null) return false;
+
+        callbackExecutorManager = new CallbackExecutorManager(executorOption);
+        if (!clients.isEmpty()) {
+            callbackExecutorManager.start();
+            for (SlockClient client : clients) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean enableAsyncCallback(CallbackExecutorManager callbackExecutorManager) {
+        if (this.callbackExecutorManager != null) {
+            this.callbackExecutorManager.stop();
+        }
+
+        this.callbackExecutorManager = callbackExecutorManager;
+        if (!clients.isEmpty()) {
+            for (SlockClient client : clients) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
+        }
+        return true;
+    }
+
     @Override
     public void open() throws ClientUnconnectException {
         for(String host : hosts) {
@@ -38,12 +101,18 @@ public class SlockReplsetClient implements ISlockClient {
             }
 
             SlockClient client = new SlockClient(hostInfo[0], Integer.parseInt(hostInfo[1]), this, databases);
-            this.clients.add(client);
+            if (callbackExecutorManager != null) {
+                client.enableAsyncCallback(callbackExecutorManager);
+            }
+            clients.add(client);
             client.tryOpen();
         }
 
-        if (this.clients.isEmpty()) {
+        if (clients.isEmpty()) {
             throw new ClientUnconnectException();
+        }
+        if (callbackExecutorManager != null) {
+            callbackExecutorManager.start();
         }
     }
 
@@ -60,12 +129,19 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public void close() {
         closed = true;
-        for(SlockClient client : clients) {
-            client.close();
+        try {
+            for (SlockClient client : clients) {
+                client.close();
+            }
+        } finally {
+            if (callbackExecutorManager != null) {
+                callbackExecutorManager.stop();
+            }
+            callbackExecutorManager = null;
         }
     }
 
-    public void addLivedClient(SlockClient client, boolean isLeader) {
+    protected void addLivedClient(SlockClient client, boolean isLeader) {
         synchronized (this) {
             this.livedClients.add(client);
             if (isLeader) {
@@ -74,7 +150,7 @@ public class SlockReplsetClient implements ISlockClient {
         }
     }
 
-    public void removeLivedClient(SlockClient client) {
+    protected void removeLivedClient(SlockClient client) {
         synchronized (this) {
             this.livedClients.remove(client);
             if (client.equals(this.livedLeaderClient)) {
@@ -95,6 +171,26 @@ public class SlockReplsetClient implements ISlockClient {
                 client = livedClients.getFirst();
             }
             return client.sendCommand(command);
+        } catch (NoSuchElementException e) {
+            throw new ClientUnconnectException();
+        }
+    }
+
+    @Override
+    public void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException {
+        if(closed) {
+            throw new ClientClosedException();
+        }
+        if (callbackExecutorManager == null) {
+            throw new ClientAsyncCallbackDisabledException();
+        }
+
+        try {
+            SlockClient client = livedLeaderClient;
+            if (client == null) {
+                client = livedClients.getFirst();
+            }
+            client.sendCommand(command, callback);
         } catch (NoSuchElementException e) {
             throw new ClientUnconnectException();
         }

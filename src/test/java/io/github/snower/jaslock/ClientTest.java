@@ -2,12 +2,17 @@ package io.github.snower.jaslock;
 
 import static org.junit.Assert.assertTrue;
 
+import io.github.snower.jaslock.callback.CallbackCommandResult;
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.exceptions.SlockException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Unit test for simple App.
@@ -53,6 +58,51 @@ public class ClientTest
     }
 
     @Test
+    public void testClientAsyncLock() throws SlockException, IOException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            Lock lock = client.newLock("test_async1".getBytes(StandardCharsets.UTF_8), 5, 5);
+            try {
+                Semaphore waiter = new Semaphore(1);
+                AtomicReference<CallbackCommandResult> callbackCommandResult = new AtomicReference<>();
+                waiter.acquire();
+                lock.acquire((byte) 0, dcr -> {
+                    callbackCommandResult.set(dcr);
+                    waiter.release();
+                });
+                waiter.acquire();
+                callbackCommandResult.get().getResult();
+                lock.release((byte) 0, dcr -> {
+                    callbackCommandResult.set(dcr);
+                    waiter.release();
+                });
+                waiter.acquire();
+                callbackCommandResult.get().getResult();
+            } catch (InterruptedException e) {}
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testReplsetClientAsyncLock() throws SlockException, ExecutionException, InterruptedException {
+        SlockReplsetClient client = new SlockReplsetClient(new String[]{clientHost + ":" + clinetPort});
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            Lock lock = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
+            CallbackFuture<Boolean> callbackFuture = lock.acquire(null);
+            callbackFuture.get();
+            callbackFuture = lock.release(null);
+            callbackFuture.get();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
     public void testEventDefaultSeted() throws IOException, SlockException {
         SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
@@ -85,6 +135,64 @@ public class ClientTest
             event.set();
             Assert.assertTrue(event.isSet());
             event.wait(2);
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testEventAsyncDefaultSeted() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+
+        try {
+            Event event = client.newEvent("event_async1".getBytes(StandardCharsets.UTF_8), 5, 60, true);
+            Assert.assertTrue(event.isSet());
+            event.clear();
+            Assert.assertFalse(event.isSet());
+            event.set();
+            Assert.assertTrue(event.isSet());
+            try {
+                Semaphore waiter = new Semaphore(1);
+                AtomicReference<CallbackFuture<Boolean>> callbackResult = new AtomicReference<>();
+                waiter.acquire();
+                event.wait(2, dr -> {
+                    callbackResult.set(dr);
+                    waiter.release();
+                });
+                waiter.acquire();
+                callbackResult.get().getResult();
+            } catch (InterruptedException e) {}
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testEventAsyncDefaultUnseted() throws IOException, SlockException, ExecutionException, InterruptedException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+
+        try {
+            Event event = client.newEvent("event_async2".getBytes(StandardCharsets.UTF_8), 5, 60, false);
+            CallbackFuture<Boolean> callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.clear(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set(null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.wait(2, null);
+            callbackFuture.get();
         } finally {
             client.close();
         }
@@ -152,5 +260,83 @@ public class ClientTest
         testLock.acquire();
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
         testLock.acquire();
+    }
+
+    @Test
+    public void testMaxConcurrentFlow() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        try {
+            MaxConcurrentFlow maxConcurrentFlow1 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            MaxConcurrentFlow maxConcurrentFlow2 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            maxConcurrentFlow1.acquire();
+            maxConcurrentFlow2.acquire();
+            maxConcurrentFlow1.release();
+            maxConcurrentFlow2.release();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testMaxConcurrentFlowAsync() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            MaxConcurrentFlow maxConcurrentFlow1 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            MaxConcurrentFlow maxConcurrentFlow2 = client.newMaxConcurrentFlow("maxconcurrentflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 60);
+            CallbackFuture<Boolean> callbackFuture = maxConcurrentFlow1.acquire(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow2.acquire(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow1.release(null);
+            callbackFuture.get();
+            callbackFuture = maxConcurrentFlow2.release(null);
+            callbackFuture.get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testTokenBucketFlow() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        try {
+            TokenBucketFlow tokenBucketFlow1 = client.newTokenBucketFlow("tokenbucketflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            TokenBucketFlow tokenBucketFlow2 = client.newTokenBucketFlow("tokenbucketflow1".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            tokenBucketFlow1.acquire();
+            tokenBucketFlow2.acquire();
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testTokenBucketFlowAsync() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.enableAsyncCallback();
+        client.open();
+        try {
+            TokenBucketFlow tokenBucketFlow1 = client.newTokenBucketFlow("tokenbucketflow2".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            TokenBucketFlow tokenBucketFlow2 = client.newTokenBucketFlow("tokenbucketflow2".getBytes(StandardCharsets.UTF_8), (short) 5, 60, 0.1);
+            CallbackFuture<Boolean> callbackFuture = tokenBucketFlow1.acquire(null);
+            callbackFuture.get();
+            callbackFuture = tokenBucketFlow2.acquire(null);
+            callbackFuture.get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
+        }
     }
 }

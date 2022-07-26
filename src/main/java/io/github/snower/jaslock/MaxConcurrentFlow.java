@@ -1,5 +1,6 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.SlockException;
 
@@ -7,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public class MaxConcurrentFlow {
     private final SlockDatabase database;
@@ -49,6 +51,26 @@ public class MaxConcurrentFlow {
         flowLock.acquire();
     }
 
+    public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        if (flowLock == null) {
+            synchronized (this) {
+                if (flowLock == null) {
+                    flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                }
+            }
+        }
+        flowLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
+    }
+
     public void release() throws SlockException {
         if (flowLock == null) {
             synchronized (this) {
@@ -58,5 +80,25 @@ public class MaxConcurrentFlow {
             }
         }
         flowLock.release();
+    }
+
+    public CallbackFuture<Boolean> release(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        if (flowLock == null) {
+            synchronized (this) {
+                if (flowLock == null) {
+                    flowLock = new Lock(database, flowKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                }
+            }
+        }
+        flowLock.release((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 }

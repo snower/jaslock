@@ -8,11 +8,11 @@ High-performance distributed sync service and atomic DB. Provides good multi-cor
 <dependency>
     <groupId>io.github.snower</groupId>
     <artifactId>jaslock</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.11</version>
 </dependency>
 ```
 
-# Lock
+# Client Lock
 
 ```java
 package main;
@@ -44,6 +44,8 @@ public class App {
 }
 ```
 
+# Replset Client Lock
+
 ```java
 package main;
 
@@ -68,6 +70,94 @@ public class App {
             e.printStackTrace();
         } finally {
             replsetClient.close();
+        }
+    }
+}
+```
+
+# Async Callback Lock
+
+```java
+package main;
+
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.Event;
+import io.github.snower.jaslock.Lock;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.exceptions.SlockException;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class App {
+    public static void main(String[] args) {
+        SlockClient client = new SlockClient("172.27.214.150", 5658);
+        client.enableAsyncCallback();
+        try {
+            client.open();
+            Lock lock = client.newLock("test", 5, 5);
+            lock.acquire(callbackFuture -> {
+                try {
+                    callbackFuture.getResult();
+                    lock.release(callbackFuture1 -> {
+                        try {
+                            callbackFuture1.getResult();
+                            System.out.println("succed");
+                        } catch (IOException | SlockException e) {
+                            e.printStackTrace();
+                        } finally {
+                            client.close();
+                        }
+                    });
+                } catch (IOException | SlockException e) {
+                    e.printStackTrace();
+                    client.close();
+                }
+            });
+        } catch (IOException | SlockException e) {
+            e.printStackTrace();
+            client.close();
+        }
+
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ignored1) {}
+    }
+}
+```
+
+# Async Future Lock
+
+```java
+package main;
+
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.Event;
+import io.github.snower.jaslock.Lock;
+import io.github.snower.jaslock.SlockReplsetClient;
+import io.github.snower.jaslock.SlockClient;
+import io.github.snower.jaslock.exceptions.SlockException;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutionException;
+
+public class App {
+    public static void main(String[] args) {
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
+        replsetClient.enableAsyncCallback();
+        try {
+            replsetClient.open();
+            Lock lock = replsetClient.newLock("test", 5, 5);
+            CallbackFuture<Boolean> callbackFuture = lock.acquire(null);
+            callbackFuture.get();
+            callbackFuture = lock.release(null);
+            callbackFuture.get();
+        } catch (IOException | SlockException | ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            client.close();
         }
     }
 }

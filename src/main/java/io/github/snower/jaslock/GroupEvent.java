@@ -1,5 +1,6 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
@@ -8,6 +9,7 @@ import io.github.snower.jaslock.exceptions.*;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public class GroupEvent {
     private final SlockDatabase database;
@@ -37,6 +39,22 @@ public class GroupEvent {
         eventLock.update();
     }
 
+    public CallbackFuture<Boolean> clear(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        byte[] lockId = encodeLockId(0, versionId);
+        int timeout = this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16);
+        Lock eventLock = new Lock(database, groupKey, lockId, timeout, expried, (short) 0, (byte) 0);
+        eventLock.update(callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
+    }
+
     public void set() throws SlockException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         for (int i = 0; i < 16; i++) {
@@ -49,6 +67,26 @@ public class GroupEvent {
         }
     }
 
+    public CallbackFuture<Boolean> set(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        for (int i = 0; i < 16; i++) {
+            byteArrayOutputStream.write((byte) 0);
+        }
+        Lock eventLock = new Lock(database, groupKey, byteArrayOutputStream.toByteArray(), timeout, expried, (short) 0, (byte) 0);
+        eventLock.releaseHead(callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockUnlockedException ignored) {
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
+    }
+
     public boolean isSet() throws SlockException {
         Lock checkLock = new Lock(database, groupKey, LockCommand.genLockId(), 0, 0, (short) 0, (byte) 0);
         try {
@@ -57,6 +95,22 @@ public class GroupEvent {
             return false;
         }
         return true;
+    }
+
+    public CallbackFuture<Boolean> isSet(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        Lock checkLock = new Lock(database, groupKey, LockCommand.genLockId(), 0, 0, (short) 0, (byte) 0);
+        checkLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                callbackCommandResult.getResult();
+                callbackFuture.setResult(true);
+            } catch (LockTimeoutException e) {
+                callbackFuture.setResult(false);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public void wakeup() throws SlockException {
@@ -73,6 +127,31 @@ public class GroupEvent {
             versionId = ((long) rlockId[0]) | (((long) rlockId[1])<<8) | (((long) rlockId[2])<<16) | (((long) rlockId[3])<<24)
                     | (((long) rlockId[4])<<32) | (((long) rlockId[5])<<40) | (((long) rlockId[6])<<48) | (((long) rlockId[7])<<56);
         }
+    }
+
+    public CallbackFuture<Boolean> wakeup(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        for (int i = 0; i < 16; i++) {
+            byteArrayOutputStream.write((byte) 0);
+        }
+        byte[] lockId = byteArrayOutputStream.toByteArray();
+        int timeout = this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16);
+        Lock eventLock = new Lock(database, groupKey, lockId, timeout, expried, (short) 0, (byte) 0);
+        eventLock.releaseHeadRetoLockWait(callbackCommandResult -> {
+            try {
+                LockCommandResult lockCommandResult = (LockCommandResult) callbackCommandResult.getResult();
+                byte[] rlockId = lockCommandResult.getLockId();
+                if (!Arrays.equals(lockId, rlockId)) {
+                    versionId = ((long) rlockId[0]) | (((long) rlockId[1])<<8) | (((long) rlockId[2])<<16) | (((long) rlockId[3])<<24)
+                            | (((long) rlockId[4])<<32) | (((long) rlockId[5])<<40) | (((long) rlockId[6])<<48) | (((long) rlockId[7])<<56);
+                }
+                callbackFuture.setResult(true);
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     public void wait(int timeout) throws SlockException {
@@ -116,6 +195,63 @@ public class GroupEvent {
             }
             throw new EventWaitTimeoutException();
         }
+    }
+
+    public CallbackFuture<Boolean> wait(int timeout, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        byte[] lockId = encodeLockId(clientId, versionId);
+        Lock waitLock = new Lock(database, groupKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
+                0, (short) 0, (byte) 0);
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        waitLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                LockCommandResult lockCommandResult = (LockCommandResult) callbackCommandResult.getResult();
+                byte[] rlockId = lockCommandResult.getLockId();
+                if (!Arrays.equals(lockId, rlockId)) {
+                    versionId = ((long) rlockId[0]) | (((long) rlockId[1])<<8) | (((long) rlockId[2])<<16) | (((long) rlockId[3])<<24)
+                            | (((long) rlockId[4])<<32) | (((long) rlockId[5])<<40) | (((long) rlockId[6])<<48) | (((long) rlockId[7])<<56);
+                }
+                callbackFuture.setResult(true);
+            } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
+                callbackFuture.setResult(false, new EventWaitTimeoutException());
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
+    }
+
+    public CallbackFuture<Boolean> waitAndTimeoutRetryClear(int timeout, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        byte[] lockId = encodeLockId(clientId, versionId);
+        Lock waitLock = new Lock(database, groupKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
+                0, (short) 0, (byte) 0);
+        CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
+        waitLock.acquire((byte) 0, callbackCommandResult -> {
+            try {
+                LockCommandResult lockCommandResult = (LockCommandResult) callbackCommandResult.getResult();
+                byte[] rlockId = lockCommandResult.getLockId();
+                if (!Arrays.equals(lockId, rlockId)) {
+                    versionId = ((long) rlockId[0]) | (((long) rlockId[1]) << 8) | (((long) rlockId[2]) << 16) | (((long) rlockId[3]) << 24)
+                            | (((long) rlockId[4]) << 32) | (((long) rlockId[5]) << 40) | (((long) rlockId[6]) << 48) | (((long) rlockId[7]) << 56);
+                }
+                callbackFuture.setResult(true);
+            } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
+                Lock eventLock = new Lock(database, encodeLockId(0, versionId), groupKey,
+                        this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16), expried, (short) 0, (byte) 0);
+                try {
+                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                    try {
+                        eventLock.release();
+                    } catch (SlockException ignored2) {
+                    }
+                    callbackFuture.setResult(true);
+                    return;
+                } catch (SlockException ignored2) {}
+                callbackFuture.setResult(false, new EventWaitTimeoutException());
+            } catch (SlockException e) {
+                callbackFuture.setResult(false, e);
+            }
+        });
+        return callbackFuture;
     }
 
     private byte[] encodeLockId(long clientId, long versionId) {
