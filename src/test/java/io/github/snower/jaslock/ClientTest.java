@@ -4,6 +4,7 @@ import static org.junit.Assert.assertTrue;
 
 import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.CallbackFuture;
+import io.github.snower.jaslock.exceptions.LockTimeoutException;
 import io.github.snower.jaslock.exceptions.SlockException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -198,33 +199,24 @@ public class ClientTest
         }
     }
 
-    @Test
-    public void testTreeLock() throws IOException, SlockException {
-        SlockClient client = new SlockClient(clientHost, clinetPort);
-        client.open();
-
-        TreeLock rootLock = client.newTreeLock("TestTreeLock", 5, 10);
-        TreeLock.TreeLockLock lock = rootLock.newLock();
-        lock.acquire();
-
-        TreeLock childLock = rootLock.newChild();
-        TreeLock.TreeLockLock clock1 = childLock.newLock();
+    private void testChildTreeLock(SlockClient client, TreeLock rootLock, TreeLock childLock, TreeLock.TreeLeafLock lock, int depth) throws IOException, SlockException {
+        TreeLock.TreeLeafLock clock1 = childLock.newLeafLock();
         clock1.acquire();
 
-        TreeLock.TreeLockLock clock2 = childLock.newLock();
+        TreeLock.TreeLeafLock clock2 = childLock.newLeafLock();
         clock2.acquire();
 
         Lock testLock = client.newLock(rootLock.getLockKey(), 0, 0);
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
         }
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
         }
 
         lock.release();
@@ -232,13 +224,20 @@ public class ClientTest
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
         }
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
+        }
+
+        if (depth - 1  > 0) {
+            lock.acquire();
+            testChildTreeLock(client, childLock, childLock.newChild(), lock, depth - 1);
+            lock.acquire();
+            testChildTreeLock(client, childLock, childLock.newChild(), lock, depth - 1);
         }
 
         clock1.release();
@@ -246,19 +245,38 @@ public class ClientTest
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
         }
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
         try {
             testLock.acquire();
             throw new SlockException();
-        } catch (SlockException e) {
+        } catch (LockTimeoutException e) {
         }
 
         clock2.release();
-        testLock = client.newLock(rootLock.getLockKey(), 0, 0);
-        testLock.acquire();
         testLock = client.newLock(childLock.getLockKey(), 0, 0);
+        testLock.acquire();
+    }
+
+    @Test
+    public void testTreeLock() throws IOException, SlockException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        TreeLock rootLock = client.newTreeLock("TestTreeLock", 5, 10);
+
+        rootLock.acquire();
+        rootLock.release();
+        rootLock.wait(1);
+
+        TreeLock.TreeLeafLock lock = rootLock.newLeafLock();
+        lock.acquire();
+
+        testChildTreeLock(client, rootLock, rootLock.newChild(),  lock,5);
+
+        rootLock.wait(1);
+        Lock testLock = client.newLock(rootLock.getLockKey(), 0, 0);
         testLock.acquire();
     }
 
