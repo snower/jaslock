@@ -14,6 +14,7 @@ public class TreeLock {
     private final int timeout;
     private final int expried;
     private final boolean isRoot;
+    private TreeLeafLock leafLock;
 
     public TreeLock(SlockDatabase database, byte[] parentKey, byte[] lockKey, int timeout, int expried) {
         this.database = database;
@@ -22,6 +23,7 @@ public class TreeLock {
         this.timeout = timeout;
         this.expried = expried;
         this.isRoot = parentKey == null;
+        this.leafLock = null;
     }
 
     public TreeLock(SlockDatabase database, String parentKey, String lockKey, int timeout, int expried) {
@@ -36,12 +38,12 @@ public class TreeLock {
         this(database, null, lockKey.getBytes(StandardCharsets.UTF_8), timeout, expried);
     }
 
-    public TreeLockLock newLock() {
-        return new TreeLockLock(database, this, new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, (short) 0xffff, (byte) 0));
+    public TreeLeafLock newLeafLock() {
+        return new TreeLeafLock(database, this, new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, (short) 0xffff, (byte) 0));
     }
 
-    public TreeLockLock loadLock(byte[] lockId) {
-        return new TreeLockLock(database, this, new Lock(database, lockKey, lockId, timeout, expried, (short) 0xffff, (byte) 0));
+    public TreeLeafLock loadLeafLock(byte[] lockId) {
+        return new TreeLeafLock(database, this, new Lock(database, lockKey, lockId, timeout, expried, (short) 0xffff, (byte) 0));
     }
 
     public TreeLock newChild() {
@@ -50,6 +52,27 @@ public class TreeLock {
 
     public TreeLock loadChild(byte[] lockKey) {
         return new TreeLock(database, this.lockKey, lockKey, timeout, expried);
+    }
+
+    public void acquire() throws SlockException {
+        Lock checkLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, 0, (short) 0, (byte) 0);
+        checkLock.acquire();
+
+        if (leafLock != null) return;
+        TreeLeafLock leafLock = newLeafLock();
+        leafLock.acquire();
+        this.leafLock = leafLock;
+    }
+
+    public void release() throws SlockException {
+        if (leafLock == null) return;
+        leafLock.release();
+        leafLock = null;
+    }
+
+    public void wait(int timeout) throws SlockException {
+        Lock checkLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, 0, (short) 0, (byte) 0);
+        checkLock.acquire();
     }
 
     public byte[] getParentKey() {
@@ -64,12 +87,12 @@ public class TreeLock {
         return isRoot;
     }
 
-    public class TreeLockLock {
+    public class TreeLeafLock {
         private final SlockDatabase database;
         private final TreeLock treeLock;
         private final Lock lock;
 
-        public TreeLockLock(SlockDatabase database, TreeLock treeLock, Lock lock) {
+        public TreeLeafLock(SlockDatabase database, TreeLock treeLock, Lock lock) {
             this.database = database;
             this.treeLock = treeLock;
             this.lock = lock;
@@ -83,7 +106,7 @@ public class TreeLock {
                 childCheckLock = new Lock(database, treeLock.getLockKey(), treeLock.getParentKey(), 0, expried, (short) 0xffff, (byte) 0);
                 try {
                     childCheckLock.acquire(ICommand.LOCK_FLAG_LOCK_TREE_LOCK);
-                    parentCheckLock = new Lock(database, treeLock.getParentKey(), LockCommand.genLockId(), 0, expried, (short) 0xffff, (byte) 0);
+                    parentCheckLock = new Lock(database, treeLock.getParentKey(), treeLock.getLockKey(), 0, expried, (short) 0xffff, (byte) 0);
                     try {
                         parentCheckLock.acquire();
                     } catch (LockLockedException ignored) {
