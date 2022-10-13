@@ -16,6 +16,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class SlockClient implements Runnable, ISlockClient {
+    private static final char[] DIGITS_LOWER = new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    private static String encodeHex(byte[] data) {
+        char[] out = new char[data.length << 1];
+        for(int i = 0, j = 0; i < data.length; ++i) {
+            out[j++] = DIGITS_LOWER[(240 & data[i]) >>> 4];
+            out[j++] = DIGITS_LOWER[15 & data[i]];
+        }
+        return new String(out);
+    }
+
     private final String host;
     private final int port;
     private boolean closed;
@@ -329,7 +340,7 @@ public class SlockClient implements Runnable, ISlockClient {
 
     protected void handleCommand(CommandResult commandResult) {
         Command command;
-        String requestId = new String(commandResult.getRequestId());
+        String requestId = encodeHex(commandResult.getRequestId());
         if (!requests.containsKey(requestId)) {
             return;
         }
@@ -352,7 +363,7 @@ public class SlockClient implements Runnable, ISlockClient {
             throw new ClientCommandException();
         }
 
-        String requestId = new String(command.getRequestId());
+        String requestId = encodeHex(command.getRequestId());
         synchronized (this) {
             if(outputStream == null) {
                 throw new ClientUnconnectException();
@@ -392,7 +403,7 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         byte[] buf = command.dumpCommand();
-        String requestId = new String(command.getRequestId());
+        String requestId = encodeHex(command.getRequestId());
         CallbackCommand callbackCommand = callbackExecutorManager.addCommand(command, callback, callbackCommandResult -> {
             requests.remove(requestId);
             callback.accept(callbackCommandResult);

@@ -104,7 +104,7 @@ public class Command implements ICommand {
     public int setWaiterCallback(Consumer<CommandResult> waiterCallback) {
         if (waiter != null) return -1;
         this.waiterCallback = waiterCallback;
-        return 5;
+        return 120;
     }
 
     public boolean wakeupWaiter() {
@@ -123,7 +123,7 @@ public class Command implements ICommand {
             return false;
         }
         try {
-            return waiter.tryAcquire(1, 5, TimeUnit.SECONDS);
+            return waiter.tryAcquire(1, 120, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             return false;
         }
