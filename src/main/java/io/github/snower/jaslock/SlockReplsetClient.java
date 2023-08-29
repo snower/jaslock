@@ -131,8 +131,11 @@ public class SlockReplsetClient implements ISlockClient {
         closed = true;
         try {
             for (SlockClient client : clients) {
-                client.close();
+                try {
+                    client.close();
+                } catch (Throwable ignored) {}
             }
+            clients.clear();
         } finally {
             if (callbackExecutorManager != null) {
                 callbackExecutorManager.stop();
