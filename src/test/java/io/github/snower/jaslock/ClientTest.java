@@ -2,7 +2,6 @@ package io.github.snower.jaslock;
 
 import static org.junit.Assert.assertTrue;
 
-import com.sun.xml.internal.ws.util.StringUtils;
 import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.CallbackFuture;
 import io.github.snower.jaslock.datas.LockSetData;
@@ -13,7 +12,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
