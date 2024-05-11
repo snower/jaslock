@@ -1,5 +1,7 @@
 package io.github.snower.jaslock.datas;
 
+import io.github.snower.jaslock.exceptions.LockDataException;
+
 public class LockData {
     protected byte commandStage;
     protected byte commandType;
@@ -13,8 +15,10 @@ public class LockData {
         this.value = value;
     }
 
-    public byte[] dumpData() {
-        if (value == null) return new byte[]{2, 0, 0, 0, (byte) (((commandStage << 6) & 0xc0) | (commandType & 0x3f)), commandFlag};
+    public byte[] dumpData() throws LockDataException {
+        if (value == null) {
+            throw new LockDataException();
+        }
         byte[] data = new byte[value.length + 6];
         data[0] = (byte) ((value.length + 2) & 0xff);
         data[1] = (byte) (((value.length + 2) >> 8 ) & 0xff);

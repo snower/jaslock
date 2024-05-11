@@ -1,6 +1,8 @@
 package io.github.snower.jaslock.commands;
 
 import io.github.snower.jaslock.datas.LockData;
+import io.github.snower.jaslock.exceptions.LockDataException;
+import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -143,8 +145,11 @@ public class LockCommand extends Command {
     }
 
     @Override
-    public byte[] getExtraData() {
-        if ((flag & LOCK_FLAG_CONTAINS_DATA) == 0 || lockData == null) return null;
+    public byte[] getExtraData() throws SlockException {
+        if ((flag & LOCK_FLAG_CONTAINS_DATA) == 0) return null;
+        if (lockData == null) {
+            throw new LockDataException();
+        }
         return lockData.dumpData();
     }
 

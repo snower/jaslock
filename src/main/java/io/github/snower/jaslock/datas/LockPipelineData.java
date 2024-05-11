@@ -1,9 +1,10 @@
 package io.github.snower.jaslock.datas;
 
 import io.github.snower.jaslock.commands.ICommand;
+import io.github.snower.jaslock.exceptions.LockDataException;
 
 public class LockPipelineData extends LockData {
-    private LockData[] lockDatas;
+    private final LockData[] lockDatas;
 
     public LockPipelineData(LockData[] lockDatas) {
         super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, (byte) 0, null);
@@ -11,8 +12,10 @@ public class LockPipelineData extends LockData {
     }
 
     @Override
-    public byte[] dumpData() {
-        if (lockDatas == null) return new byte[]{2, 0, 0, 0, (byte) (((commandStage << 6) & 0xc0) | (commandType & 0x3f)), commandFlag};
+    public byte[] dumpData() throws LockDataException {
+        if (lockDatas == null || lockDatas.length == 0) {
+            throw new LockDataException();
+        }
         byte[][] values = new byte[lockDatas.length][];
         int valueLength = 0;
         for (int i = 0; i < lockDatas.length; i++) {

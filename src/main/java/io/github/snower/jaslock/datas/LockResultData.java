@@ -15,10 +15,16 @@ public class LockResultData {
     }
 
     public byte[] getDataAsBytes() {
+        if (data.length <= 6) {
+            return null;
+        }
         return Arrays.copyOfRange(data, 6, data.length);
     }
 
     public String getDataAsString() {
+        if (data.length <= 6) {
+            return "";
+        }
         return new String(data, 6, data.length - 6, StandardCharsets.UTF_8);
     }
 

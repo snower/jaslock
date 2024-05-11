@@ -1,5 +1,7 @@
 package io.github.snower.jaslock.commands;
 
+import io.github.snower.jaslock.exceptions.SlockException;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Date;
@@ -72,7 +74,7 @@ public class Command implements ICommand {
         return false;
     }
 
-    public byte[] getExtraData() {
+    public byte[] getExtraData() throws SlockException {
         return null;
     }
 
