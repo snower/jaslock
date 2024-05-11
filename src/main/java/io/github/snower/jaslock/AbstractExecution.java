@@ -86,8 +86,8 @@ public abstract class AbstractExecution {
         return count;
     }
 
-    public void setCount(int expried) {
-        this.expried = expried;
+    public void setRCount(byte rCount) {
+        this.rCount = rCount;
     }
 
     public byte getRCount() {

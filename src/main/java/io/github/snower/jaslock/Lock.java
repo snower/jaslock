@@ -127,9 +127,17 @@ public class Lock extends AbstractExecution {
         acquire((byte) 0, (LockData) null);
     }
 
+    public void acquire(LockData lockData) throws SlockException {
+        acquire((byte) 0, lockData);
+    }
+
     public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        return acquire(null, callback);
+    }
+
+    public CallbackFuture<Boolean> acquire(LockData lockData, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        acquire((byte) 0, null, callbackCommandResult -> {
+        acquire((byte) 0, lockData, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
                 callbackFuture.setResult(true);
@@ -173,7 +181,7 @@ public class Lock extends AbstractExecution {
 
     public void release(byte flag, LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
         LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, lockData != null ? (byte) (flag | ICommand.UNLOCK_FLAG_CONTAINS_DATA) :  flag,
-                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount);
+                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount, lockData);
         database.getClient().sendCommand(command, callbackCommandResult -> {
             try {
                 CommandResult commandResult = callbackCommandResult.getResult();
@@ -210,9 +218,17 @@ public class Lock extends AbstractExecution {
         release((byte) 0, (LockData) null);
     }
 
+    public void release(LockData lockData) throws SlockException {
+        release((byte) 0, lockData);
+    }
+
     public CallbackFuture<Boolean> release(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
+        return release(null, callback);
+    }
+
+    public CallbackFuture<Boolean> release(LockData lockData, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        release((byte) 0, null, callbackCommandResult -> {
+        release((byte) 0, lockData, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
                 callbackFuture.setResult(true);

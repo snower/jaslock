@@ -2,8 +2,10 @@ package io.github.snower.jaslock;
 
 import static org.junit.Assert.assertTrue;
 
+import com.sun.xml.internal.ws.util.StringUtils;
 import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.CallbackFuture;
+import io.github.snower.jaslock.datas.LockSetData;
 import io.github.snower.jaslock.exceptions.LockTimeoutException;
 import io.github.snower.jaslock.exceptions.SlockException;
 import org.junit.Assert;
@@ -11,6 +13,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,6 +44,20 @@ public class ClientTest
             Lock lock = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock.acquire();
             lock.release();
+
+            Lock lock1 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock1.setCount((short) 10);
+            Lock lock2 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock2.setCount((short) 10);
+
+            lock1.acquire(new LockSetData("aaa"));
+            Assert.assertNull(lock1.getCurrentLockDataAsString());
+            lock2.acquire(new LockSetData("bbb"));
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "aaa");
+            lock1.release(new LockSetData("ccc"));
+            Assert.assertEquals(lock1.getCurrentLockDataAsString(), "bbb");
+            lock2.release();
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "ccc");
         } finally {
             client.close();
         }
@@ -54,6 +71,20 @@ public class ClientTest
             Lock lock = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock.acquire();
             lock.release();
+
+            Lock lock1 = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock1.setCount((short) 10);
+            Lock lock2 = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock2.setCount((short) 10);
+
+            lock1.acquire(new LockSetData("aaa"));
+            Assert.assertNull(lock1.getCurrentLockDataAsString());
+            lock2.acquire(new LockSetData("bbb"));
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "aaa");
+            lock1.release(new LockSetData("ccc"));
+            Assert.assertEquals(lock1.getCurrentLockDataAsString(), "bbb");
+            lock2.release();
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "ccc");
         } finally {
             client.close();
         }
@@ -95,10 +126,28 @@ public class ClientTest
         client.open();
         try {
             Lock lock = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
-            CallbackFuture<Boolean> callbackFuture = lock.acquire(null);
+            CallbackFuture<Boolean> callbackFuture = lock.acquire((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
-            callbackFuture = lock.release(null);
+            callbackFuture = lock.release((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
+
+            Lock lock1 = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock1.setCount((short) 10);
+            Lock lock2 = client.newLock("test_async2".getBytes(StandardCharsets.UTF_8), 5, 5);
+            lock2.setCount((short) 10);
+
+            callbackFuture = lock1.acquire(new LockSetData("aaa"), null);
+            callbackFuture.get();
+            Assert.assertNull(lock1.getCurrentLockDataAsString());
+            callbackFuture = lock2.acquire(new LockSetData("bbb"), null);
+            callbackFuture.get();
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "aaa");
+            callbackFuture = lock1.release(new LockSetData("ccc"), null);
+            callbackFuture.get();
+            Assert.assertEquals(lock1.getCurrentLockDataAsString(), "bbb");
+            callbackFuture = lock2.release((Consumer<CallbackFuture<Boolean>>) null);
+            callbackFuture.get();
+            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "ccc");
         } finally {
             client.close();
         }
@@ -117,6 +166,15 @@ public class ClientTest
             event.set();
             Assert.assertTrue(event.isSet());
             event.wait(2);
+
+            event = client.newEvent("event1".getBytes(StandardCharsets.UTF_8), 5, 60, true);
+            Assert.assertTrue(event.isSet());
+            event.clear();
+            Assert.assertFalse(event.isSet());
+            event.set("aaa");
+            Assert.assertTrue(event.isSet());
+            event.wait(2);
+            Assert.assertEquals(event.getCurrentLockDataAsString(), "aaa");
         } finally {
             client.close();
         }
@@ -137,6 +195,19 @@ public class ClientTest
             event.set();
             Assert.assertTrue(event.isSet());
             event.wait(2);
+            event.clear();
+
+            event = client.newEvent("event2".getBytes(StandardCharsets.UTF_8), 5, 60, false);
+            Assert.assertFalse(event.isSet());
+            event.set("aaa");
+            Assert.assertTrue(event.isSet());
+            event.clear();
+            Assert.assertFalse(event.isSet());
+            event.set("bbb");
+            Assert.assertTrue(event.isSet());
+            event.wait(2);
+            Assert.assertEquals(event.getCurrentLockDataAsString(), "bbb");
+            event.clear();
         } finally {
             client.close();
         }
@@ -166,6 +237,25 @@ public class ClientTest
                 waiter.acquire();
                 callbackResult.get().getResult();
             } catch (InterruptedException e) {}
+
+            event = client.newEvent("event_async1".getBytes(StandardCharsets.UTF_8), 5, 60, true);
+            Assert.assertTrue(event.isSet());
+            event.clear();
+            Assert.assertFalse(event.isSet());
+            event.set("aaa");
+            Assert.assertTrue(event.isSet());
+            try {
+                Semaphore waiter = new Semaphore(1);
+                AtomicReference<CallbackFuture<Boolean>> callbackResult = new AtomicReference<>();
+                waiter.acquire();
+                event.wait(2, dr -> {
+                    callbackResult.set(dr);
+                    waiter.release();
+                });
+                waiter.acquire();
+                callbackResult.get().getResult();
+                Assert.assertEquals(event.getCurrentLockDataAsString(), "aaa");
+            } catch (InterruptedException e) {}
         } finally {
             client.close();
         }
@@ -194,6 +284,29 @@ public class ClientTest
             callbackFuture = event.isSet(null);
             Assert.assertTrue(callbackFuture.get());
             callbackFuture = event.wait(2, null);
+            callbackFuture.get();
+            callbackFuture = event.clear((Consumer<CallbackFuture<Boolean>>) null);
+            callbackFuture.get();
+
+            event = client.newEvent("event_async2".getBytes(StandardCharsets.UTF_8), 5, 60, false);
+            callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set("aaa", (Consumer<CallbackFuture<Boolean>>) null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.clear((Consumer<CallbackFuture<Boolean>>) null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertFalse(callbackFuture.get());
+            callbackFuture = event.set("bbb", (Consumer<CallbackFuture<Boolean>>) null);
+            callbackFuture.get();
+            callbackFuture = event.isSet(null);
+            Assert.assertTrue(callbackFuture.get());
+            callbackFuture = event.wait(2, null);
+            callbackFuture.get();
+            Assert.assertEquals(event.getCurrentLockDataAsString(), "bbb");
+            callbackFuture = event.clear((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
         } finally {
             client.close();
