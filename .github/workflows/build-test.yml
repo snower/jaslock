@@ -30,9 +30,9 @@ jobs:
           - 5658:5658
         options: >-
           --health-cmd "slock-cli ping"
-          --health-interval 10s
+          --health-interval 3s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     steps:
     - uses: actions/checkout@v4

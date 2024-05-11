@@ -1,5 +1,8 @@
 # jaslock
 
+[![Tests](https://img.shields.io/github/actions/workflow/status/snower/jaslock/build-test.yml?label=tests)](https://github.com/snower/slock/actions/workflows/build-test.yml)
+[![GitHub Repo stars](https://img.shields.io/github/stars/snower/jaslock?style=social)](https://github.com/snower/jaslock/stargazers)
+
 High-performance distributed sync service and atomic DB. Provides good multi-core support through lock queues, high-performance asynchronous binary network protocols. Can be used for spikes, synchronization, event notification, concurrency control. https://github.com/snower/slock
 
 # Install
