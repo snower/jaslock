@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * Unit test for simple App.
@@ -180,15 +181,15 @@ public class ClientTest
             Event event = client.newEvent("event_async2".getBytes(StandardCharsets.UTF_8), 5, 60, false);
             CallbackFuture<Boolean> callbackFuture = event.isSet(null);
             Assert.assertFalse(callbackFuture.get());
-            callbackFuture = event.set(null);
+            callbackFuture = event.set((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
             callbackFuture = event.isSet(null);
             Assert.assertTrue(callbackFuture.get());
-            callbackFuture = event.clear(null);
+            callbackFuture = event.clear((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
             callbackFuture = event.isSet(null);
             Assert.assertFalse(callbackFuture.get());
-            callbackFuture = event.set(null);
+            callbackFuture = event.set((Consumer<CallbackFuture<Boolean>>) null);
             callbackFuture.get();
             callbackFuture = event.isSet(null);
             Assert.assertTrue(callbackFuture.get());

@@ -6,6 +6,7 @@ import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
 import io.github.snower.jaslock.callback.CallbackCommandResult;
+import io.github.snower.jaslock.datas.LockData;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -14,14 +15,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-public class Lock {
-    private final SlockDatabase database;
-    private byte[] lockKey;
+public class Lock extends AbstractExecution {
     private byte[] lockId;
-    private final int timeout;
-    private final int expried;
-    private final short count;
-    private final byte rCount;
 
     public byte[] getLockKey() {
         return lockKey;
@@ -31,35 +26,9 @@ public class Lock {
         return lockId;
     }
 
-    public int getTimeout() {
-        return timeout;
-    }
-
-    public int getExpried() {
-        return expried;
-    }
-
-    public short getCount() {
-        return count;
-    }
-
-    public byte getRCount() {
-        return rCount;
-    }
-
     public Lock(SlockDatabase database, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
-        this.database = database;
-        if(lockKey.length > 16) {
-            try {
-                MessageDigest digest = MessageDigest.getInstance("MD5");
-                this.lockKey = digest.digest(lockKey);
-            } catch (NoSuchAlgorithmException e) {
-                this.lockKey = Arrays.copyOfRange(lockKey, 0, 16);
-            }
-        } else {
-            this.lockKey = new byte[16];
-            System.arraycopy(lockKey, 0, this.lockKey, 16 - lockKey.length, lockKey.length);
-        }
+        super(database, lockKey, timeout, expried, count, rCount);
+
         if(lockId == null) {
             this.lockId = LockCommand.genLockId();
         } else {
@@ -90,9 +59,14 @@ public class Lock {
     }
 
     public LockCommandResult acquire(byte flag) throws SlockException {
-        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, flag, database.getDbId(), lockKey,
-                lockId, timeout, expried, count, rCount);
+        return acquire(flag, (LockData) null);
+    }
+
+    public LockCommandResult acquire(byte flag, LockData lockData) throws SlockException {
+        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, lockData != null ? (byte) (flag | ICommand.LOCK_FLAG_CONTAINS_DATA) :  flag,
+                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount, lockData);
         LockCommandResult commandResult = (LockCommandResult) database.getClient().sendCommand(command);
+        currentLockData = commandResult.getLockResultData();
         if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
             return commandResult;
         }
@@ -112,11 +86,16 @@ public class Lock {
     }
 
     public void acquire(byte flag, Consumer<CallbackCommandResult> callback) throws SlockException {
-        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, flag, database.getDbId(), lockKey,
-                lockId, timeout, expried, count, rCount);
+        acquire(flag, null, callback);
+    }
+
+    public void acquire(byte flag, LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
+        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_LOCK, lockData != null ? (byte) (flag | ICommand.LOCK_FLAG_CONTAINS_DATA) :  flag,
+                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount, lockData);
         database.getClient().sendCommand(command, callbackCommandResult -> {
             try {
                 CommandResult commandResult = callbackCommandResult.getResult();
+                currentLockData = ((LockCommandResult) commandResult).getLockResultData();
                 if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
                     callback.accept(new CallbackCommandResult(command, commandResult, null));
                     return;
@@ -145,12 +124,12 @@ public class Lock {
     }
 
     public void acquire() throws SlockException {
-        acquire((byte) 0);
+        acquire((byte) 0, (LockData) null);
     }
 
     public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        acquire((byte) 0, callbackCommandResult -> {
+        acquire((byte) 0, null, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
                 callbackFuture.setResult(true);
@@ -162,9 +141,14 @@ public class Lock {
     }
 
     public LockCommandResult release(byte flag) throws SlockException {
-        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, flag, database.getDbId(), lockKey,
-                lockId, timeout, expried, count, rCount);
+        return release(flag, (LockData) null);
+    }
+
+    public LockCommandResult release(byte flag, LockData lockData) throws SlockException {
+        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, lockData != null ? (byte) (flag | ICommand.UNLOCK_FLAG_CONTAINS_DATA) :  flag,
+                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount, lockData);
         LockCommandResult commandResult = (LockCommandResult) database.getClient().sendCommand(command);
+        currentLockData = commandResult.getLockResultData();
         if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
             return commandResult;
         }
@@ -184,11 +168,16 @@ public class Lock {
     }
 
     public void release(byte flag, Consumer<CallbackCommandResult> callback) throws SlockException {
-        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, flag, database.getDbId(), lockKey,
-                lockId, timeout, expried, count, rCount);
+        release(flag, null, callback);
+    }
+
+    public void release(byte flag, LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
+        LockCommand command = new LockCommand(ICommand.COMMAND_TYPE_UNLOCK, lockData != null ? (byte) (flag | ICommand.UNLOCK_FLAG_CONTAINS_DATA) :  flag,
+                database.getDbId(), lockKey, lockId, timeout, expried, count, rCount);
         database.getClient().sendCommand(command, callbackCommandResult -> {
             try {
                 CommandResult commandResult = callbackCommandResult.getResult();
+                currentLockData = ((LockCommandResult) commandResult).getLockResultData();
                 if(commandResult.getResult() == ICommand.COMMAND_RESULT_SUCCED)  {
                     callback.accept(new CallbackCommandResult(command, commandResult, null));
                     return;
@@ -218,12 +207,12 @@ public class Lock {
 
 
     public void release() throws SlockException {
-        release((byte) 0);
+        release((byte) 0, (LockData) null);
     }
 
     public CallbackFuture<Boolean> release(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        release((byte) 0, callbackCommandResult -> {
+        release((byte) 0, null, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
                 callbackFuture.setResult(true);
@@ -235,8 +224,12 @@ public class Lock {
     }
 
     public CommandResult show() throws SlockException {
+        return show((LockData) null);
+    }
+
+    public CommandResult show(LockData lockData) throws SlockException {
         try {
-            acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED);
+            acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED, lockData);
         } catch (LockNotOwnException e) {
             return e.getCommandResult();
         }
@@ -244,7 +237,11 @@ public class Lock {
     }
 
     public void show(Consumer<CallbackCommandResult> callback) throws SlockException {
-        acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED, callbackCommandResult -> {
+        show(null, callback);
+    }
+
+    public void show(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
+        acquire(ICommand.LOCK_FLAG_SHOW_WHEN_LOCKED, lockData, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
                 callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), null, null));
@@ -257,13 +254,21 @@ public class Lock {
     }
 
     public void update() throws SlockException {
+        update((LockData) null);
+    }
+
+    public void update(LockData lockData) throws SlockException {
         try {
-            acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+            acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, lockData);
         } catch (LockLockedException ignored) {}
     }
 
     public void update(Consumer<CallbackCommandResult> callback) throws SlockException {
-        acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, callbackCommandResult -> {
+        update(null, callback);
+    }
+
+    public void update(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
+        acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, lockData, callbackCommandResult -> {
             try {
                 CommandResult commandResult = callbackCommandResult.getResult();
                 callback.accept(new CallbackCommandResult(callbackCommandResult.getCommand(), commandResult, null));
@@ -276,20 +281,36 @@ public class Lock {
     }
 
     public void releaseHead() throws SlockException {
+        releaseHead((LockData) null);
+    }
+
+    public void releaseHead(LockData lockData) throws SlockException {
         Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
-        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED);
+        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData);
     }
 
     public void releaseHead(Consumer<CallbackCommandResult> callback) throws SlockException {
+        releaseHead(null, callback);
+    }
+
+    public void releaseHead(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
         Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
-        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, callback);
+        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData, callback);
     }
 
     public LockCommandResult releaseHeadRetoLockWait() throws SlockException {
-        return acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT));
+        return releaseHeadRetoLockWait((LockData) null);
+    }
+
+    public LockCommandResult releaseHeadRetoLockWait(LockData lockData) throws SlockException {
+        return acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData);
     }
 
     public void releaseHeadRetoLockWait(Consumer<CallbackCommandResult> callback) throws SlockException {
-        acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), callback);
+        releaseHeadRetoLockWait(null, callback);
+    }
+
+    public void releaseHeadRetoLockWait(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
+        acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData, callback);
     }
 }

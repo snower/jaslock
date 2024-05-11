@@ -1,5 +1,7 @@
 package io.github.snower.jaslock.commands;
 
+import io.github.snower.jaslock.datas.LockData;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Date;
@@ -19,8 +21,9 @@ public class LockCommand extends Command {
     protected int expried;
     protected short count;
     protected byte rCount;
+    protected LockData lockData;
 
-    public LockCommand(byte commandType, byte flag, byte dbId, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
+    public LockCommand(byte commandType, byte flag, byte dbId, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount, LockData lockData) {
         super(commandType);
 
         this.flag = flag;
@@ -35,10 +38,19 @@ public class LockCommand extends Command {
         this.expried = expried;
         this.count = count;
         this.rCount = rCount;
+        this.lockData = lockData;
+    }
+
+    public LockCommand(byte commandType, byte flag, byte dbId, byte[] lockKey, byte[] lockId, int timeout, int expried, short count, byte rCount) {
+        this(commandType, flag, dbId, lockKey, lockId, timeout, expried, count, rCount, null);
+    }
+
+    public LockCommand(byte commandType, byte dbId, byte[] lockKey, byte[] lockId, int timeout, int expried, LockData lockData) {
+        this(commandType, (byte) 0, dbId, lockKey, lockId, timeout, expried, (short) 0, (byte) 0, lockData);
     }
 
     public LockCommand(byte commandType, byte dbId, byte[] lockKey, byte[] lockId, int timeout, int expried) {
-        this(commandType, (byte) 0, dbId, lockKey, lockId, timeout, expried, (short) 0, (byte) 0);
+        this(commandType, (byte) 0, dbId, lockKey, lockId, timeout, expried, (short) 0, (byte) 0, null);
     }
 
     public byte getFlag() {
@@ -71,6 +83,10 @@ public class LockCommand extends Command {
 
     public byte getrCount() {
         return rCount;
+    }
+
+    public LockData getLockData() {
+        return lockData;
     }
 
     @Override
@@ -119,6 +135,17 @@ public class LockCommand extends Command {
         byteArrayOutputStream.write((count >> 8) & 0xff);
         byteArrayOutputStream.write(rCount);
         return byteArrayOutputStream.toByteArray();
+    }
+
+    @Override
+    public boolean hasExtraData() {
+        return (flag & LOCK_FLAG_CONTAINS_DATA) != 0;
+    }
+
+    @Override
+    public byte[] getExtraData() {
+        if ((flag & LOCK_FLAG_CONTAINS_DATA) == 0 || lockData == null) return null;
+        return lockData.dumpData();
     }
 
     public static byte[] genLockId() {

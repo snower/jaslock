@@ -15,6 +15,8 @@ import java.util.function.Consumer;
 
 public class SlockReplsetClient implements ISlockClient {
     private final String[] hosts;
+    private short defaultTimeoutFlag;
+    private short defaultExpriedFlag;
     private final LinkedList<SlockClient> clients;
     private final LinkedList<SlockClient> livedClients;
     private volatile SlockClient livedLeaderClient;
@@ -90,6 +92,26 @@ public class SlockReplsetClient implements ISlockClient {
             }
         }
         return true;
+    }
+
+    @Override
+    public void setDefaultTimeoutFlag(short defaultTimeoutFlag) {
+        this.defaultTimeoutFlag = defaultTimeoutFlag;
+        for (SlockDatabase database : databases) {
+            if (database != null) {
+                database.setDefaultTimeoutFlag(defaultTimeoutFlag);
+            }
+        }
+    }
+
+    @Override
+    public void setDefaultExpriedFlag(short defaultExpriedFlag) {
+        this.defaultExpriedFlag = defaultExpriedFlag;
+        for (SlockDatabase database : databases) {
+            if (database != null) {
+                database.setDefaultExpriedFlag(defaultExpriedFlag);
+            }
+        }
     }
 
     @Override
@@ -211,7 +233,7 @@ public class SlockReplsetClient implements ISlockClient {
         if(databases[dbId] == null) {
             synchronized (this) {
                 if(databases[dbId] == null) {
-                    databases[dbId] = new SlockDatabase(this, dbId);
+                    databases[dbId] = new SlockDatabase(this, dbId, defaultTimeoutFlag, defaultExpriedFlag);
                 }
             }
         }

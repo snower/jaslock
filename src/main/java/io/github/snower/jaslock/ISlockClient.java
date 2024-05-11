@@ -15,6 +15,8 @@ public interface ISlockClient {
     boolean enableAsyncCallback();
     boolean enableAsyncCallback(ExecutorOption executorOption);
     boolean enableAsyncCallback(CallbackExecutorManager callbackExecutorManager);
+    void setDefaultTimeoutFlag(short defaultTimeoutFlag);
+    void setDefaultExpriedFlag(short defaultExpriedFlag);
     void open() throws IOException, ClientUnconnectException;
     ISlockClient tryOpen();
     void close();

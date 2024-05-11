@@ -43,6 +43,8 @@ public class Command implements ICommand {
         return requestId;
     }
 
+
+
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
@@ -63,6 +65,15 @@ public class Command implements ICommand {
         byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(new byte[45], 0, 45);
         return byteArrayOutputStream.toByteArray();
+    }
+
+    @Override
+    public boolean hasExtraData() {
+        return false;
+    }
+
+    public byte[] getExtraData() {
+        return null;
     }
 
     public static byte[] genRequestId() {

@@ -30,6 +30,8 @@ public class SlockClient implements Runnable, ISlockClient {
 
     private final String host;
     private final int port;
+    private short defaultTimeoutFlag;
+    private short defaultExpriedFlag;
     private boolean closed;
     private byte[] clientId;
     private Thread thread;
@@ -102,6 +104,26 @@ public class SlockClient implements Runnable, ISlockClient {
         }
         this.callbackExecutorManager = callbackExecutorManager;
         return true;
+    }
+
+    @Override
+    public void setDefaultTimeoutFlag(short defaultTimeoutFlag) {
+        this.defaultTimeoutFlag = defaultTimeoutFlag;
+        for (SlockDatabase database : databases) {
+            if (database != null) {
+                database.setDefaultTimeoutFlag(defaultTimeoutFlag);
+            }
+        }
+    }
+
+    @Override
+    public void setDefaultExpriedFlag(short defaultExpriedFlag) {
+        this.defaultExpriedFlag = defaultExpriedFlag;
+        for (SlockDatabase database : databases) {
+            if (database != null) {
+                database.setDefaultExpriedFlag(defaultExpriedFlag);
+            }
+        }
     }
 
     @Override
@@ -180,6 +202,30 @@ public class SlockClient implements Runnable, ISlockClient {
         callbackExecutorManager = null;
     }
 
+    private int readBytes(byte[] buf, int len) throws IOException {
+        int n = inputStream.read(buf, 0, len);
+        while (n > 0 && n < len) {
+            int nn = inputStream.read(buf, n, len - n);
+            if(nn <= 0) {
+                break;
+            }
+            n += nn;
+        }
+        return n;
+    }
+
+    private int readBytes(byte[] buf, int offset, int len) throws IOException {
+        int n = inputStream.read(buf, offset, len);
+        while (n > 0 && n < len) {
+            int nn = inputStream.read(buf, offset + n, len - n);
+            if(nn <= 0) {
+                break;
+            }
+            n += nn;
+        }
+        return n;
+    }
+
     @Override
     public void run() {
         try {
@@ -193,15 +239,7 @@ public class SlockClient implements Runnable, ISlockClient {
                     byte[] buf = new byte[64];
                     while (!closed && socket != null) {
                         try {
-                            int n = inputStream.read(buf, 0, 64);
-                            while (n > 0 && n < 64) {
-                                int nn = inputStream.read(buf, n, 64 - n);
-                                if(nn <= 0) {
-                                    break;
-                                }
-                                n += nn;
-                            }
-                            if(n < 64) {
+                            if(readBytes(buf, 64) < 64) {
                                 break;
                             }
                         } catch (IOException ignored) {
@@ -213,6 +251,17 @@ public class SlockClient implements Runnable, ISlockClient {
                             case ICommand.COMMAND_TYPE_UNLOCK:
                                 LockCommandResult lockCommandResult = new LockCommandResult();
                                 if (lockCommandResult.parseCommand(buf) != null) {
+                                    if (lockCommandResult.hasExtraData()) {
+                                        if(readBytes(buf, 4) < 4) {
+                                            break;
+                                        }
+                                        int dataLen = (((int) buf[0]) & 0xff) | ((((int) buf[1]) & 0xff) << 8) | ((((int) buf[2]) & 0xff) << 16) | ((((int) buf[3]) & 0xff) << 24);
+                                        byte[] dataBuf = new byte[dataLen + 4];
+                                        if (readBytes(dataBuf, 4, dataLen) < dataLen) {
+                                            break;
+                                        }
+                                        lockCommandResult.loadCommandData(dataBuf);
+                                    }
                                     handleCommand(lockCommandResult);
                                 }
                                 break;
@@ -315,15 +364,7 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         try {
-            int n = inputStream.read(buf, 0, 64);
-            while (n > 0 && n < 64) {
-                int nn = inputStream.read(buf, n, 64 - n);
-                if(nn <= 0) {
-                    break;
-                }
-                n += nn;
-            }
-            if (n < 64) {
+            if (readBytes(buf, 64) < 64) {
                 throw new IOException("read result error");
             }
             InitCommandResult initCommandResult = new InitCommandResult();
@@ -373,6 +414,10 @@ public class SlockClient implements Runnable, ISlockClient {
             requests.put(requestId, command);
             try {
                 outputStream.write(buf);
+                byte[] extraData = command.getExtraData();
+                if (extraData != null) {
+                    outputStream.write(extraData);
+                }
             } catch (IOException e) {
                 requests.remove(requestId);
                 try {
@@ -418,6 +463,10 @@ public class SlockClient implements Runnable, ISlockClient {
             requests.put(requestId, command);
             try {
                 outputStream.write(buf);
+                byte[] extraData = command.getExtraData();
+                if (extraData != null) {
+                    outputStream.write(extraData);
+                }
             } catch (IOException e) {
                 requests.remove(requestId);
                 callbackCommand.close();
@@ -442,7 +491,7 @@ public class SlockClient implements Runnable, ISlockClient {
         if(databases[dbId] == null) {
             synchronized (this) {
                 if(databases[dbId] == null) {
-                    databases[dbId] = new SlockDatabase(this, dbId);
+                    databases[dbId] = new SlockDatabase(this, dbId, defaultTimeoutFlag, defaultExpriedFlag);
                 }
             }
         }

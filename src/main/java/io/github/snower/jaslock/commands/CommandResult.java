@@ -52,6 +52,10 @@ public class CommandResult implements ICommand {
         return this;
     }
 
+    public CommandResult loadCommandData(byte[] buf) {
+        return this;
+    }
+
     @Override
     public byte[] dumpCommand() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -61,5 +65,10 @@ public class CommandResult implements ICommand {
         byteArrayOutputStream.write(requestId, 0, 16);
         byteArrayOutputStream.write(new byte[44], 0, 44);
         return byteArrayOutputStream.toByteArray();
+    }
+
+    @Override
+    public boolean hasExtraData() {
+        return false;
     }
 }

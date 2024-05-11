@@ -7,21 +7,14 @@ import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.nio.charset.StandardCharsets;
 
-public class TreeLock {
-    private final SlockDatabase database;
+public class TreeLock extends AbstractExecution {
     private final byte[] parentKey;
-    private final byte[] lockKey;
-    private final int timeout;
-    private final int expried;
     private final boolean isRoot;
     private TreeLeafLock leafLock;
 
     public TreeLock(SlockDatabase database, byte[] parentKey, byte[] lockKey, int timeout, int expried) {
-        this.database = database;
+        super(database, lockKey, timeout, expried);
         this.parentKey = parentKey;
-        this.lockKey = lockKey;
-        this.timeout = timeout;
-        this.expried = expried;
         this.isRoot = parentKey == null;
         this.leafLock = null;
     }

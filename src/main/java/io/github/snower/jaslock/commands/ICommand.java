@@ -20,18 +20,21 @@ public interface ICommand {
     public final static byte COMMAND_RESULT_EXPRIED = 0x09;
     public final static byte COMMAND_RESULT_STATE_ERROR = 0x0a;
     public final static byte COMMAND_RESULT_ERROR = 0x0b;
+    public final static byte COMMAND_RESULT_LOCK_ACK_WAITING = 0x0c;
 
     public final static byte LOCK_FLAG_SHOW_WHEN_LOCKED   = 0x01;
     public final static byte LOCK_FLAG_UPDATE_WHEN_LOCKED = 0x02;
     public final static byte LOCK_FLAG_FROM_AOF           = 0x04;
     public final static byte LOCK_FLAG_CONCURRENT_CHECK   = 0x08;
     public final static byte LOCK_FLAG_LOCK_TREE_LOCK     = 0x10;
+    public final static byte LOCK_FLAG_CONTAINS_DATA      = 0x20;
 
     public final static byte UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED = 0x01;
     public final static byte UNLOCK_FLAG_CANCEL_WAIT_LOCK_WHEN_UNLOCKED  = 0x02;
     public final static byte UNLOCK_FLAG_FROM_AOF                        = 0x04;
     public final static byte UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT             = 0x08;
     public final static byte UNLOCK_FLAG_UNLOCK_TREE_LOCK                = 0x10;
+    public final static byte UNLOCK_FLAG_CONTAINS_DATA                   = 0x20;
 
     public final static int TIMEOUT_FLAG_PUSH_SUBSCRIBE                        = 0x0020;
     public final static int TIMEOUT_FLAG_MINUTE_TIME                           = 0x0040;
@@ -57,8 +60,22 @@ public interface ICommand {
     public final static int EXPRIED_FLAG_UNLIMITED_EXPRIED_TIME                = 0x4000;
     public final static int EXPRIED_FLAG_KEEPLIVED                             = 0x8000;
 
+    public final static byte LOCK_DATA_STAGE_LOCK    = 0;
+    public final static byte LOCK_DATA_STAGE_UNLOCK  = 1;
+    public final static byte LOCK_DATA_STAGE_TIMEOUT = 2;
+    public final static byte LOCK_DATA_STAGE_EXPRIED = 3;
+
+    public final static byte LOCK_DATA_COMMAND_TYPE_SET      = 0;
+    public final static byte LOCK_DATA_COMMAND_TYPE_UNSET    = 1;
+    public final static byte LOCK_DATA_COMMAND_TYPE_INCR     = 2;
+    public final static byte LOCK_DATA_COMMAND_TYPE_APPEND   = 3;
+    public final static byte LOCK_DATA_COMMAND_TYPE_SHIFT    = 4;
+    public final static byte LOCK_DATA_COMMAND_TYPE_EXECUTE  = 5;
+    public final static byte LOCK_DATA_COMMAND_TYPE_PIPELINE = 6;
+
     int getCommandType();
     byte[] getRequestId();
     ICommand parseCommand(byte[] buf);
     byte[] dumpCommand();
+    boolean hasExtraData();
 }

@@ -5,36 +5,16 @@ import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
-public class ReadWriteLock {
-    private final SlockDatabase database;
-    private byte[] lockKey;
-    private final int timeout;
-    private final int expried;
+public class ReadWriteLock extends AbstractExecution {
     private final LinkedList<Lock> readLocks;
     private Lock writeLock;
 
     public ReadWriteLock(SlockDatabase database, byte[] lockKey, int timeout, int expried) {
-        this.database = database;
-        if(lockKey.length > 16) {
-            try {
-                MessageDigest digest = MessageDigest.getInstance("MD5");
-                this.lockKey = digest.digest(lockKey);
-            } catch (NoSuchAlgorithmException e) {
-                this.lockKey = Arrays.copyOfRange(lockKey, 0, 16);
-            }
-        } else {
-            this.lockKey = new byte[16];
-            System.arraycopy(lockKey, 0, this.lockKey, 16 - lockKey.length, lockKey.length);
-        }
-        this.timeout = timeout;
-        this.expried = expried;
+        super(database, lockKey, timeout, expried);
         this.readLocks = new LinkedList<>();
     }
 

@@ -1,5 +1,7 @@
 package io.github.snower.jaslock.commands;
 
+import io.github.snower.jaslock.datas.LockResultData;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
@@ -12,6 +14,7 @@ public class LockCommandResult extends CommandResult {
     protected short count;
     protected byte lrCount;
     protected byte rCount;
+    protected LockResultData lockResultData;
 
     public LockCommandResult() {
         super();
@@ -49,6 +52,10 @@ public class LockCommandResult extends CommandResult {
         return rCount;
     }
 
+    public LockResultData getLockResultData() {
+        return lockResultData;
+    }
+
     @Override
     public ICommand parseCommand(byte[] buf) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
@@ -72,6 +79,12 @@ public class LockCommandResult extends CommandResult {
     }
 
     @Override
+    public CommandResult loadCommandData(byte[] buf) {
+        this.lockResultData = new LockResultData(buf);
+        return this;
+    }
+
+    @Override
     public byte[] dumpCommand() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         byteArrayOutputStream.write(MAGIC);
@@ -90,5 +103,10 @@ public class LockCommandResult extends CommandResult {
         byteArrayOutputStream.write(rCount);
         byteArrayOutputStream.write(new byte[4], 0, 4);
         return byteArrayOutputStream.toByteArray();
+    }
+
+    @Override
+    public boolean hasExtraData() {
+        return (flag & LOCK_FLAG_CONTAINS_DATA) != 0;
     }
 }
