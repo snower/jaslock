@@ -32,7 +32,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        SlockClient client = new SlockClient("172.27.214.150", 5658);
+        SlockClient client = new SlockClient("127.0.0.1", 5658);
         try {
             client.open();
             Lock lock = client.newLock("test", 5, 5);
@@ -63,7 +63,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"127.0.0.1:5658"});
         try {
             replsetClient.open();
             Lock lock = replsetClient.newLock("test", 5, 5);
@@ -95,7 +95,7 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        SlockClient client = new SlockClient("172.27.214.150", 5658);
+        SlockClient client = new SlockClient("127.0.0.1", 5658);
         client.enableAsyncCallback();
         try {
             client.open();
@@ -148,7 +148,7 @@ import java.util.concurrent.ExecutionException;
 
 public class App {
     public static void main(String[] args) {
-        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"127.0.0.1:5658"});
         replsetClient.enableAsyncCallback();
         try {
             replsetClient.open();
@@ -183,16 +183,17 @@ import java.nio.charset.StandardCharsets;
 
 public class App {
     public static void main(String[] args) {
-        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"172.27.214.150:5658"});
+        SlockReplsetClient replsetClient = new SlockReplsetClient(new String[]{"127.0.0.1:5658"});
         try {
             replsetClient.open();
             Event event1 = replsetClient.newEvent("test", 5, 5, true);
             event1.clear();
 
             Event event2 = replsetClient.newEvent("test", 5, 5, true);
-            event2.set();
+            event2.set("{\"value\": 10}");
 
             event1.wait(10);
+            System.out.println(event1.getCurrentLockDataAsString());
         } catch (SlockException e) {
             e.printStackTrace();
         } finally {

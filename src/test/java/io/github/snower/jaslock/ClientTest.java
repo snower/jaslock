@@ -2,6 +2,7 @@ package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.callback.CallbackCommandResult;
 import io.github.snower.jaslock.callback.CallbackFuture;
+import io.github.snower.jaslock.callback.ExecutorOption;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.datas.*;
@@ -13,8 +14,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -788,7 +791,7 @@ public class ClientTest
             lock.release();
 
             int rate = (int) (count * 1000 / (endTime - startTime));
-            System.out.println(rate);
+            System.out.println("TokenBucketFlow 1000r/s Count: " + rate);
         } finally {
             client.close();
         }
@@ -902,26 +905,27 @@ public class ClientTest
     }
 
     @Test
-    public void testBenchmark() throws IOException, InterruptedException {
-        SlockClient client = new SlockClient(clientHost, clinetPort);
-        client.open();
-
+    public void testBenchmark() throws Exception {
         int totalCount = 400000;
+
+        SlockClient client1 = new SlockClient(clientHost, clinetPort);
+        client1.open();
         try {
+            AtomicReference<Exception> exception = new AtomicReference<>(null);
             AtomicInteger count = new AtomicInteger(0);
             List<Thread> threads = new ArrayList<>();
             long startMs = System.currentTimeMillis();
             for (int i = 0; i < 256; i++) {
                 Thread thread = new Thread(() -> {
                     while (count.get() < totalCount) {
-                        Lock lock = client.newLock("benchmark" + count.get(), 5, 10);
+                        Lock lock = client1.newLock("benchmark" + count.get(), 5, 10);
                         try {
                             lock.acquire();
                             count.incrementAndGet();
                             lock.release();
                             count.incrementAndGet();
                         } catch (SlockException e) {
-                            e.printStackTrace();
+                            exception.set(e);
                         }
                     }
                 });
@@ -934,8 +938,59 @@ public class ClientTest
             }
             long endMs = System.currentTimeMillis();
             System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+            if (exception.get() != null) {
+                throw exception.get();
+            }
         } finally {
-            client.close();
+            client1.close();
+        }
+
+        SlockClient client2 = new SlockClient(clientHost, clinetPort);
+        client2.enableAsyncCallback(new ExecutorOption(256, 256, 120, TimeUnit.SECONDS));
+        client2.open();
+        try {
+            CountDownLatch countDownLatch = new CountDownLatch(totalCount);
+            AtomicReference<Exception> exception = new AtomicReference<>(null);
+            AtomicInteger count = new AtomicInteger(0);
+            long startMs = System.currentTimeMillis();
+            for (int i = 0; i < 256; i++) {
+                runBenchmarkAsyncLock(client2, countDownLatch, count, exception);
+            }
+            countDownLatch.await();
+            long endMs = System.currentTimeMillis();
+            System.out.println("Async Benchmark " + totalCount + " Count Lock and Unlock: " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+            if (exception.get() != null) {
+                throw exception.get();
+            }
+        } finally {
+            client2.close();
+        }
+    }
+
+    private void runBenchmarkAsyncLock(SlockClient client, CountDownLatch countDownLatch, AtomicInteger count, AtomicReference<Exception> exception) {
+        Lock lock = client.newLock("benchmark" + count.get(), 5, 10);
+        try {
+            lock.acquire(acquireFuture -> {
+                try {
+                    acquireFuture.get();
+                    count.incrementAndGet();
+                    countDownLatch.countDown();
+                    lock.release(releaseFuture -> {
+                        try {
+                            releaseFuture.get();
+                            count.incrementAndGet();
+                            countDownLatch.countDown();
+                            runBenchmarkAsyncLock(client, countDownLatch, count, exception);
+                        } catch (InterruptedException | ExecutionException e) {
+                            exception.set(e);
+                        }
+                    });
+                } catch (InterruptedException | ExecutionException | SlockException e) {
+                    exception.set(e);
+                }
+            });
+        } catch (SlockException e) {
+            exception.set(e);
         }
     }
 }
