@@ -11,8 +11,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -893,6 +896,44 @@ public class ClientTest
             } catch (LockTimeoutException e) {}
             lock1.release();
             Assert.assertEquals(lock1.getCurrentLockDataAsString(), "aaa");
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void testBenchmark() throws IOException, InterruptedException {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+
+        int totalCount = 400000;
+        try {
+            AtomicInteger count = new AtomicInteger(0);
+            List<Thread> threads = new ArrayList<>();
+            long startMs = System.currentTimeMillis();
+            for (int i = 0; i < 256; i++) {
+                Thread thread = new Thread(() -> {
+                    while (count.get() < totalCount) {
+                        Lock lock = client.newLock("benchmark" + count.get(), 5, 10);
+                        try {
+                            lock.acquire();
+                            count.incrementAndGet();
+                            lock.release();
+                            count.incrementAndGet();
+                        } catch (SlockException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+                thread.setDaemon(true);
+                thread.start();
+                threads.add(thread);
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+            long endMs = System.currentTimeMillis();
+            System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
         } finally {
             client.close();
         }
