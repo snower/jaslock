@@ -74,6 +74,6 @@ public class LockException extends SlockException {
         if (commandResult instanceof LockCommandResult) {
             return ((LockCommandResult) commandResult).getLockResultData().getDataAsLong();
         }
-        return null;
+        return 0L;
     }
 }

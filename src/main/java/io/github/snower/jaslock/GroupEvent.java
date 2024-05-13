@@ -27,6 +27,14 @@ public class GroupEvent extends AbstractExecution {
         this(database, groupKey.getBytes(StandardCharsets.UTF_8), clientId, versionId, timeout, expried);
     }
 
+    public long getClientId() {
+        return clientId;
+    }
+
+    public long getVersionId() {
+        return versionId;
+    }
+
     public void clear() throws SlockException {
         clear((LockData) null);
     }
@@ -87,15 +95,11 @@ public class GroupEvent extends AbstractExecution {
     }
 
     public void set(LockData lockData) throws SlockException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        for (int i = 0; i < 16; i++) {
-            byteArrayOutputStream.write((byte) 0);
-        }
-        Lock eventLock = new Lock(database, lockKey, byteArrayOutputStream.toByteArray(), timeout, expried, (short) 0, (byte) 0);
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        Lock eventLock = new Lock(database, lockKey, lockId, timeout, expried, (short) 0, (byte) 0);
         try {
             eventLock.releaseHead(lockData);
-        } catch (LockUnlockedException ignored) {
-        }
+        } catch (LockUnlockedException ignored) {}
     }
 
     public CallbackFuture<Boolean> set(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
@@ -112,11 +116,8 @@ public class GroupEvent extends AbstractExecution {
 
     public CallbackFuture<Boolean> set(LockData lockData, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        for (int i = 0; i < 16; i++) {
-            byteArrayOutputStream.write((byte) 0);
-        }
-        Lock eventLock = new Lock(database, lockKey, byteArrayOutputStream.toByteArray(), timeout, expried, (short) 0, (byte) 0);
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        Lock eventLock = new Lock(database, lockKey, lockId, timeout, expried, (short) 0, (byte) 0);
         eventLock.releaseHead(lockData, callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
@@ -169,11 +170,7 @@ public class GroupEvent extends AbstractExecution {
     }
 
     public void wakeup(LockData lockData) throws SlockException {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        for (int i = 0; i < 16; i++) {
-            byteArrayOutputStream.write((byte) 0);
-        }
-        byte[] lockId = byteArrayOutputStream.toByteArray();
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         int timeout = this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16);
         Lock eventLock = new Lock(database, lockKey, lockId, timeout, expried, (short) 0, (byte) 0);
         LockCommandResult lockCommandResult = eventLock.releaseHeadRetoLockWait(lockData);
@@ -198,11 +195,7 @@ public class GroupEvent extends AbstractExecution {
 
     public CallbackFuture<Boolean> wakeup(LockData lockData, Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        for (int i = 0; i < 16; i++) {
-            byteArrayOutputStream.write((byte) 0);
-        }
-        byte[] lockId = byteArrayOutputStream.toByteArray();
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         int timeout = this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16);
         Lock eventLock = new Lock(database, lockKey, lockId, timeout, expried, (short) 0, (byte) 0);
         eventLock.releaseHeadRetoLockWait(lockData, callbackCommandResult -> {

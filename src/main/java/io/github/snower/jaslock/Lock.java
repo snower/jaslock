@@ -301,8 +301,13 @@ public class Lock extends AbstractExecution {
     }
 
     public void releaseHead(LockData lockData) throws SlockException {
-        Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
-        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData);
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        Lock lock = new Lock(database, lockKey, lockId, timeout, expried, count, (byte) 0);
+        try {
+            lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData);
+        } finally {
+            currentLockData = lock.getCurrentLockData();
+        }
     }
 
     public void releaseHead(Consumer<CallbackCommandResult> callback) throws SlockException {
@@ -310,8 +315,12 @@ public class Lock extends AbstractExecution {
     }
 
     public void releaseHead(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
-        Lock lock = new Lock(database, lockKey, new byte[16], timeout, expried, count, (byte) 0);
-        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData, callback);
+        byte[] lockId = new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        Lock lock = new Lock(database, lockKey, lockId, timeout, expried, count, (byte) 0);
+        lock.release(ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED, lockData, callbackCommandResult -> {
+            currentLockData = lock.getCurrentLockData();
+            callback.accept(callbackCommandResult);
+        });
     }
 
     public LockCommandResult releaseHeadRetoLockWait() throws SlockException {
@@ -319,7 +328,7 @@ public class Lock extends AbstractExecution {
     }
 
     public LockCommandResult releaseHeadRetoLockWait(LockData lockData) throws SlockException {
-        return acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData);
+        return release((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData);
     }
 
     public void releaseHeadRetoLockWait(Consumer<CallbackCommandResult> callback) throws SlockException {
@@ -327,6 +336,6 @@ public class Lock extends AbstractExecution {
     }
 
     public void releaseHeadRetoLockWait(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
-        acquire((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData, callback);
+        release((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData, callback);
     }
 }

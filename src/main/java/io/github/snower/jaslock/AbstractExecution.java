@@ -114,7 +114,7 @@ public abstract class AbstractExecution {
 
     public Long getCurrentLockDataAsLong() {
         if (currentLockData == null) {
-            return null;
+            return 0L;
         }
         return currentLockData.getDataAsLong();
     }
