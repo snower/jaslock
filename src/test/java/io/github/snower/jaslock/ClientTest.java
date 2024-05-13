@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
@@ -24,8 +25,9 @@ import java.util.function.Consumer;
 
 public class ClientTest
 {
-    static String clientHost = "127.0.0.1";
-    static int clinetPort = 5658;
+    private static final Random random = new Random();
+    private static final String clientHost = "127.0.0.1";
+    private static final int clinetPort = 5658;
 
     @Test
     public void testClientLock() throws IOException, SlockException {
@@ -920,7 +922,7 @@ public class ClientTest
                     while (count.get() < totalCount) {
                         Lock lock = client1.newLock("benchmark" + count.get(), 5, 10);
                         try {
-                            lock.acquire();
+                            lock.acquire(count.get() % 2 == 0 ? new LockSetData(new byte[random.nextInt(255) + 1]) : null);
                             count.incrementAndGet();
                             lock.release();
                             count.incrementAndGet();
@@ -970,7 +972,7 @@ public class ClientTest
     private void runBenchmarkAsyncLock(SlockClient client, CountDownLatch countDownLatch, int totalCount, AtomicInteger count, AtomicReference<Exception> exception) {
         Lock lock = client.newLock("benchmark" + count.get(), 5, 10);
         try {
-            lock.acquire(acquireFuture -> {
+            lock.acquire(count.get() % 2 == 0 ? new LockSetData(new byte[random.nextInt(255) + 1]) : null, acquireFuture -> {
                 try {
                     acquireFuture.get();
                     count.incrementAndGet();
