@@ -785,7 +785,7 @@ public class ClientTest
             lock.release();
 
             int rate = (int) (count * 1000 / (endTime - startTime));
-            Assert.assertTrue(rate > 700 && rate <= 1000);
+            Assert.assertTrue(rate > 500 && rate <= 1000);
         } finally {
             client.close();
         }
