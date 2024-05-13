@@ -924,7 +924,7 @@ public class ClientTest
                             count.incrementAndGet();
                             lock.release();
                             count.incrementAndGet();
-                        } catch (SlockException e) {
+                        } catch (Exception e) {
                             exception.set(e);
                         }
                     }
@@ -937,7 +937,7 @@ public class ClientTest
                 thread.join();
             }
             long endMs = System.currentTimeMillis();
-            System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+            System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
             if (exception.get() != null) {
                 throw exception.get();
             }
@@ -949,16 +949,16 @@ public class ClientTest
         client2.enableAsyncCallback(new ExecutorOption(256, 256, 120, TimeUnit.SECONDS));
         client2.open();
         try {
-            CountDownLatch countDownLatch = new CountDownLatch(totalCount);
+            CountDownLatch countDownLatch = new CountDownLatch(256);
             AtomicReference<Exception> exception = new AtomicReference<>(null);
             AtomicInteger count = new AtomicInteger(0);
             long startMs = System.currentTimeMillis();
             for (int i = 0; i < 256; i++) {
-                runBenchmarkAsyncLock(client2, countDownLatch, count, exception);
+                runBenchmarkAsyncLock(client2, countDownLatch, totalCount, count, exception);
             }
             countDownLatch.await();
             long endMs = System.currentTimeMillis();
-            System.out.println("Async Benchmark " + totalCount + " Count Lock and Unlock: " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+            System.out.println("Async Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) count.get()) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
             if (exception.get() != null) {
                 throw exception.get();
             }
@@ -967,30 +967,35 @@ public class ClientTest
         }
     }
 
-    private void runBenchmarkAsyncLock(SlockClient client, CountDownLatch countDownLatch, AtomicInteger count, AtomicReference<Exception> exception) {
+    private void runBenchmarkAsyncLock(SlockClient client, CountDownLatch countDownLatch, int totalCount, AtomicInteger count, AtomicReference<Exception> exception) {
         Lock lock = client.newLock("benchmark" + count.get(), 5, 10);
         try {
             lock.acquire(acquireFuture -> {
                 try {
                     acquireFuture.get();
                     count.incrementAndGet();
-                    countDownLatch.countDown();
                     lock.release(releaseFuture -> {
                         try {
                             releaseFuture.get();
                             count.incrementAndGet();
-                            countDownLatch.countDown();
-                            runBenchmarkAsyncLock(client, countDownLatch, count, exception);
-                        } catch (InterruptedException | ExecutionException e) {
+                            if (count.get() < totalCount) {
+                                runBenchmarkAsyncLock(client, countDownLatch, totalCount, count, exception);
+                            } else {
+                                countDownLatch.countDown();
+                            }
+                        } catch (Exception e) {
                             exception.set(e);
+                            countDownLatch.countDown();
                         }
                     });
-                } catch (InterruptedException | ExecutionException | SlockException e) {
+                } catch (Exception e) {
                     exception.set(e);
+                    countDownLatch.countDown();
                 }
             });
-        } catch (SlockException e) {
+        } catch (Exception e) {
             exception.set(e);
+            countDownLatch.countDown();
         }
     }
 }
