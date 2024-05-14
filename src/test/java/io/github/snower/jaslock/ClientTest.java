@@ -948,7 +948,7 @@ public class ClientTest
         }
 
         SlockClient client2 = new SlockClient(clientHost, clinetPort);
-        client2.enableAsyncCallback(new ExecutorOption(256, 256, 120, TimeUnit.SECONDS));
+        client2.enableAsyncCallback(new ExecutorOption(256, 256, 65536, 120, TimeUnit.SECONDS));
         client2.open();
         try {
             CountDownLatch countDownLatch = new CountDownLatch(256);

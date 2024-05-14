@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class CallbackExecutorManager {
@@ -57,11 +58,12 @@ public class CallbackExecutorManager {
 
         if (callbackExecutor == null) {
             callbackExecutor = new ThreadPoolExecutor(executorOption.getWorkerCount(), executorOption.getMaxWorkerCount(), executorOption.getWorkerKeepAliveTime(),
-                    executorOption.getWorkerKeepAliveTimeUnit(), new LinkedBlockingQueue<>());
+                    executorOption.getWorkerKeepAliveTimeUnit(), executorOption.getMaxCapacity() <= 0 ? new SynchronousQueue<>() : new LinkedBlockingQueue<>(executorOption.getMaxCapacity()),
+                    new CallbackExecutorThreadFactory("slock-callback-" ));
             isExternCallbackExecutor = false;
         }
         if (timeoutScheduledExecutor == null) {
-            timeoutScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            timeoutScheduledExecutor = Executors.newSingleThreadScheduledExecutor(new CallbackExecutorThreadFactory("slock-schedule-" ));
             isExternTimeoutExecutor = false;
         }
         timeoutQueues = new ConcurrentHashMap<>();
@@ -143,5 +145,27 @@ public class CallbackExecutorManager {
         }
         callbackCommand.addTimeoutQueues(timeoutAtQueues);
         return callbackCommand;
+    }
+
+    private static class CallbackExecutorThreadFactory implements ThreadFactory {
+        private static final AtomicInteger poolNumber = new AtomicInteger(1);
+        private final ThreadGroup group;
+        private final AtomicInteger threadNumber = new AtomicInteger(1);
+        private final String namePrefix;
+
+        public CallbackExecutorThreadFactory(String nameGroup) {
+            SecurityManager s = System.getSecurityManager();
+            this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+            this.namePrefix = nameGroup + poolNumber.getAndIncrement() + "-thread-";
+        }
+
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(group, r, namePrefix + threadNumber.getAndIncrement(), 0);
+            if (t.isDaemon())
+                t.setDaemon(false);
+            if (t.getPriority() != Thread.NORM_PRIORITY)
+                t.setPriority(Thread.NORM_PRIORITY);
+            return t;
+        }
     }
 }
