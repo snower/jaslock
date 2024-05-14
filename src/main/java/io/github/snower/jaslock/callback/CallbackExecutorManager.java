@@ -59,7 +59,7 @@ public class CallbackExecutorManager {
         if (callbackExecutor == null) {
             callbackExecutor = new ThreadPoolExecutor(executorOption.getWorkerCount(), executorOption.getMaxWorkerCount(), executorOption.getWorkerKeepAliveTime(),
                     executorOption.getWorkerKeepAliveTimeUnit(), executorOption.getMaxCapacity() <= 0 ? new SynchronousQueue<>() : new LinkedBlockingQueue<>(executorOption.getMaxCapacity()),
-                    new CallbackExecutorThreadFactory("slock-callback-" ));
+                    new CallbackExecutorThreadFactory("slock-callback-"), (r, executor) -> r.run());
             isExternCallbackExecutor = false;
         }
         if (timeoutScheduledExecutor == null) {
