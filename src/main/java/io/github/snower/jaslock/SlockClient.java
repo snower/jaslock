@@ -12,20 +12,29 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class SlockClient implements Runnable, ISlockClient {
-    private static final char[] DIGITS_LOWER = new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    private static final class BytesKey {
+        private final byte[] bytes;
 
-    private static String encodeHex(byte[] data) {
-        int l = data.length;
-        char[] out = new char[l << 1];
-        for(int i = 0, j = 0; i < l; i++) {
-            out[j++] = DIGITS_LOWER[(240 & data[i]) >>> 4];
-            out[j++] = DIGITS_LOWER[15 & data[i]];
+        public BytesKey(byte[] bytes) {
+            this.bytes = bytes;
         }
-        return new String(out);
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            return Arrays.equals(bytes, ((BytesKey) o).bytes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(bytes);
+        }
     }
 
     private final String host;
@@ -39,7 +48,7 @@ public class SlockClient implements Runnable, ISlockClient {
     private InputStream inputStream;
     private OutputStream outputStream;
     private SlockDatabase[] databases;
-    private ConcurrentHashMap<String, Command> requests;
+    private ConcurrentHashMap<BytesKey, Command> requests;
     private SlockReplsetClient replsetClient;
     private CallbackExecutorManager callbackExecutorManager;
 
@@ -179,8 +188,8 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         synchronized (this) {
-            for(Object requestId : requests.keySet().toArray()) {
-                Command command = requests.remove((String) requestId);
+            for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                Command command = requests.remove(requestId);
                 if(command == null) {
                     continue;
                 }
@@ -276,10 +285,8 @@ public class SlockClient implements Runnable, ISlockClient {
                 } catch (Exception ignored) {
                     try {
                         Thread.sleep(2000);
-                    } catch (InterruptedException ignored1) {
-                    }
+                    } catch (InterruptedException ignored1) {}
                 }
-
                 closeSocket();
             }
         } finally {
@@ -310,8 +317,8 @@ public class SlockClient implements Runnable, ISlockClient {
 
     protected void reconnect() {
         synchronized (this) {
-            for(Object requestId : requests.keySet().toArray()) {
-                Command command = requests.remove((String) requestId);
+            for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                Command command = requests.remove(requestId);
                 if(command == null) {
                     continue;
                 }
@@ -381,12 +388,11 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     protected void handleCommand(CommandResult commandResult) {
-        Command command;
-        String requestId = encodeHex(commandResult.getRequestId());
+        BytesKey requestId = new BytesKey(commandResult.getRequestId());
         if (!requests.containsKey(requestId)) {
             return;
         }
-        command = requests.remove(requestId);
+        Command command = requests.remove(requestId);
         if(command == null) {
             return;
         }
@@ -405,7 +411,7 @@ public class SlockClient implements Runnable, ISlockClient {
             throw new ClientCommandException();
         }
 
-        String requestId = encodeHex(command.getRequestId());
+        BytesKey requestId = new BytesKey(command.getRequestId());
         synchronized (this) {
             if(outputStream == null) {
                 throw new ClientUnconnectException();
@@ -449,7 +455,7 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         byte[] buf = command.dumpCommand();
-        String requestId = encodeHex(command.getRequestId());
+        BytesKey requestId = new BytesKey(command.getRequestId());
         CallbackCommand callbackCommand = callbackExecutorManager.addCommand(command, callback, callbackCommandResult -> {
             requests.remove(requestId);
             callback.accept(callbackCommandResult);
