@@ -36,14 +36,14 @@ public class SlockDatabase {
     }
 
     private int mergeTimeoutFlag(int timeout) {
-        if (defaultTimeoutFlag > 0) {
+        if (defaultTimeoutFlag != 0) {
             timeout = timeout | ((((int) defaultTimeoutFlag) & 0xffff) << 16);
         }
         return timeout;
     }
 
     private int mergeExpriedFlag(int expried) {
-        if (defaultExpriedFlag > 0) {
+        if (defaultExpriedFlag != 0) {
             expried = expried | ((((int) defaultExpriedFlag) & 0xffff) << 16);
         }
         return expried;
