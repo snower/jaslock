@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 public class SlockClient implements Runnable, ISlockClient {
     private static final class BytesKey {
         private final byte[] bytes;
+        private int bytesHash = 0;
 
         public BytesKey(byte[] bytes) {
             this.bytes = bytes;
@@ -33,7 +34,10 @@ public class SlockClient implements Runnable, ISlockClient {
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(bytes);
+            if (bytesHash == 0) {
+                bytesHash = Arrays.hashCode(bytes);
+            }
+            return bytesHash;
         }
     }
 

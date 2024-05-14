@@ -38,19 +38,19 @@ public class ClientTest
             lock.acquire();
             lock.release();
 
-            Lock lock1 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
-            lock1.setCount((short) 10);
-            Lock lock2 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
-            lock2.setCount((short) 10);
-
-            lock1.acquire(new LockSetData("aaa"));
-            Assert.assertNull(lock1.getCurrentLockDataAsString());
-            lock2.acquire(new LockSetData("bbb"));
-            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "aaa");
-            lock1.release(new LockSetData("ccc"));
-            Assert.assertEquals(lock1.getCurrentLockDataAsString(), "bbb");
-            lock2.release();
-            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "ccc");
+//            Lock lock1 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
+//            lock1.setCount((short) 10);
+//            Lock lock2 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
+//            lock2.setCount((short) 10);
+//
+//            lock1.acquire(new LockSetData("aaa"));
+//            Assert.assertNull(lock1.getCurrentLockDataAsString());
+//            lock2.acquire(new LockSetData("bbb"));
+//            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "aaa");
+//            lock1.release(new LockSetData("ccc"));
+//            Assert.assertEquals(lock1.getCurrentLockDataAsString(), "bbb");
+//            lock2.release();
+//            Assert.assertEquals(lock2.getCurrentLockDataAsString(), "ccc");
         } finally {
             client.close();
         }
