@@ -162,7 +162,7 @@ public class SlockClient implements Runnable, ISlockClient {
             }
             connect();
         } catch (IOException e) {
-            thread = new Thread(this);
+            thread = new Thread(this, "jaslock-io-" + host + ":" + port);
             thread.setDaemon(true);
             thread.start();
 
@@ -171,7 +171,7 @@ public class SlockClient implements Runnable, ISlockClient {
             }
             return null;
         }
-        thread = new Thread(this);
+        thread = new Thread(this, "jaslock-io-" + host + ":" + port);
         thread.setDaemon(true);
         thread.start();
 
