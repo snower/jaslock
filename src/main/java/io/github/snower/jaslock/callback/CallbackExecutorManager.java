@@ -59,11 +59,11 @@ public class CallbackExecutorManager {
         if (callbackExecutor == null) {
             callbackExecutor = new ThreadPoolExecutor(executorOption.getWorkerCount(), executorOption.getMaxWorkerCount(), executorOption.getWorkerKeepAliveTime(),
                     executorOption.getWorkerKeepAliveTimeUnit(), executorOption.getMaxCapacity() <= 0 ? new SynchronousQueue<>() : new LinkedBlockingQueue<>(executorOption.getMaxCapacity()),
-                    new CallbackExecutorThreadFactory("slock-callback-"), (r, executor) -> r.run());
+                    new CallbackExecutorThreadFactory("jaslock-callback-"), (r, executor) -> r.run());
             isExternCallbackExecutor = false;
         }
         if (timeoutScheduledExecutor == null) {
-            timeoutScheduledExecutor = Executors.newSingleThreadScheduledExecutor(new CallbackExecutorThreadFactory("slock-schedule-" ));
+            timeoutScheduledExecutor = Executors.newSingleThreadScheduledExecutor(new CallbackExecutorThreadFactory("jaslock-schedule-" ));
             isExternTimeoutExecutor = false;
         }
         timeoutQueues = new ConcurrentHashMap<>();
@@ -81,7 +81,7 @@ public class CallbackExecutorManager {
 
                         callbackExecutor.submit(() -> {
                             callbackCommand.getTimeoutCallback().accept(new CallbackCommandResult(callbackCommand.getCommand(),
-                                    null, new ClientCommandTimeoutException()));
+                                    null, new ClientCommandTimeoutException("The client waits for command execution to return a timeout")));
                         });
                     }
                 }
@@ -114,7 +114,7 @@ public class CallbackExecutorManager {
 
     public CallbackCommand addCommand(Command command, Consumer<CallbackCommandResult> callback, Consumer<CallbackCommandResult> timeoutCallback) throws SlockException {
         if (!isRuning) {
-            throw new ClientAsyncCallbackStopedException();
+            throw new ClientAsyncCallbackStopedException("Async thread pool stopped");
         }
 
         CallbackCommand callbackCommand = new CallbackCommand(command, callback, timeoutCallback);
@@ -126,14 +126,14 @@ public class CallbackExecutorManager {
 
             callbackExecutor.submit(() -> {
                 if (commandResult == null) {
-                    callback.accept(new CallbackCommandResult(command, null, new ClientClosedException()));
+                    callback.accept(new CallbackCommandResult(command, null, new ClientClosedException("client has been closed")));
                 } else {
                     callback.accept(new CallbackCommandResult(command, commandResult, null));
                 }
             });
         });
         if (timeout <= 0) {
-            throw new ClientAsyncCallbackWaitedException();
+            throw new ClientAsyncCallbackWaitedException("Timed out");
         }
 
         callbackCommand.setTimeoutAt(Math.max((new Date()).getTime() / 1000 + timeout, currentTimeoutAt + 1));

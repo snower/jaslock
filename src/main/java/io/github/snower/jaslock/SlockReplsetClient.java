@@ -131,7 +131,7 @@ public class SlockReplsetClient implements ISlockClient {
         }
 
         if (clients.isEmpty()) {
-            throw new ClientUnconnectException();
+            throw new ClientUnconnectException("clients not connected");
         }
         if (callbackExecutorManager != null) {
             callbackExecutorManager.start();
@@ -187,7 +187,7 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public CommandResult sendCommand(Command command) throws SlockException {
         if(closed) {
-            throw new ClientClosedException();
+            throw new ClientClosedException("client has been closed");
         }
 
         try {
@@ -197,17 +197,17 @@ public class SlockReplsetClient implements ISlockClient {
             }
             return client.sendCommand(command);
         } catch (NoSuchElementException e) {
-            throw new ClientUnconnectException();
+            throw new ClientUnconnectException("clients not connected");
         }
     }
 
     @Override
     public void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException {
         if(closed) {
-            throw new ClientClosedException();
+            throw new ClientClosedException("client has been closed");
         }
         if (callbackExecutorManager == null) {
-            throw new ClientAsyncCallbackDisabledException();
+            throw new ClientAsyncCallbackDisabledException("The asynchronous thread pool is not enabled. First enableAsyncCallback to enable the asynchronous thread pool.");
         }
 
         try {
@@ -217,7 +217,7 @@ public class SlockReplsetClient implements ISlockClient {
             }
             client.sendCommand(command, callback);
         } catch (NoSuchElementException e) {
-            throw new ClientUnconnectException();
+            throw new ClientUnconnectException("clients not connected");
         }
     }
 

@@ -148,7 +148,7 @@ public class LockCommand extends Command {
     public byte[] getExtraData() throws SlockException {
         if ((flag & LOCK_FLAG_CONTAINS_DATA) == 0) return null;
         if (lockData == null) {
-            throw new LockDataException();
+            throw new LockDataException("Data is null");
         }
         return lockData.dumpData();
     }

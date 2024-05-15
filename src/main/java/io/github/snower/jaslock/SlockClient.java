@@ -145,7 +145,7 @@ public class SlockClient implements Runnable, ISlockClient {
             return;
         }
         connect();
-        thread = new Thread(this);
+        thread = new Thread(this, "jaslock-io-" + host + ":" + port);
         thread.setDaemon(true);
         thread.start();
 
@@ -407,18 +407,18 @@ public class SlockClient implements Runnable, ISlockClient {
     @Override
     public CommandResult sendCommand(Command command) throws SlockException {
         if(closed) {
-            throw new ClientClosedException();
+            throw new ClientClosedException("client has been closed");
         }
 
         byte[] buf = command.dumpCommand();
         if (!command.createWaiter()) {
-            throw new ClientCommandException();
+            throw new ClientCommandException("Adding a wait command returns waiter failure");
         }
 
         BytesKey requestId = new BytesKey(command.getRequestId());
         synchronized (this) {
             if(outputStream == null) {
-                throw new ClientUnconnectException();
+                throw new ClientUnconnectException("client not connected " + host + ":" + port);
             }
 
             requests.put(requestId, command);
@@ -432,19 +432,18 @@ public class SlockClient implements Runnable, ISlockClient {
                 requests.remove(requestId);
                 try {
                     socket.close();
-                } catch (IOException ignored) {
-                }
-                throw new ClientOutputStreamException();
+                } catch (IOException ignored) {}
+                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
             }
         }
 
         if(!command.waiteWaiter()) {
             requests.remove(requestId);
-            throw new ClientCommandTimeoutException();
+            throw new ClientCommandTimeoutException("The client waits for command execution to return a timeout");
         }
 
         if(command.commandResult == null) {
-            throw new ClientClosedException();
+            throw new ClientClosedException("client has been closed");
         }
         return command.commandResult;
     }
@@ -452,10 +451,10 @@ public class SlockClient implements Runnable, ISlockClient {
     @Override
     public void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException {
         if(closed) {
-            throw new ClientClosedException();
+            throw new ClientClosedException("client has been closed");
         }
         if (callbackExecutorManager == null) {
-            throw new ClientAsyncCallbackDisabledException();
+            throw new ClientAsyncCallbackDisabledException("The asynchronous thread pool is not enabled. First enableAsyncCallback to enable the asynchronous thread pool.");
         }
 
         byte[] buf = command.dumpCommand();
@@ -467,7 +466,7 @@ public class SlockClient implements Runnable, ISlockClient {
 
         synchronized (this) {
             if(outputStream == null) {
-                throw new ClientUnconnectException();
+                throw new ClientUnconnectException("client not connected " + host + ":" + port);
             }
 
             requests.put(requestId, command);
@@ -482,9 +481,8 @@ public class SlockClient implements Runnable, ISlockClient {
                 callbackCommand.close();
                 try {
                     socket.close();
-                } catch (IOException ignored) {
-                }
-                throw new ClientOutputStreamException();
+                } catch (IOException ignored) {}
+                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
             }
         }
     }

@@ -14,7 +14,7 @@ public class LockPipelineData extends LockData {
     @Override
     public byte[] dumpData() throws LockDataException {
         if (lockDatas == null || lockDatas.length == 0) {
-            throw new LockDataException();
+            throw new LockDataException("Data value is null");
         }
         byte[][] values = new byte[lockDatas.length][];
         int valueLength = 0;

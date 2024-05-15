@@ -17,7 +17,7 @@ public class LockData {
 
     public byte[] dumpData() throws LockDataException {
         if (value == null) {
-            throw new LockDataException();
+            throw new LockDataException("Data value is null");
         }
         byte[] data = new byte[value.length + 6];
         data[0] = (byte) ((value.length + 2) & 0xff);
