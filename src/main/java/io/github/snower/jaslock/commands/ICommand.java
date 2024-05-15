@@ -73,6 +73,11 @@ public interface ICommand {
     public final static byte LOCK_DATA_COMMAND_TYPE_EXECUTE  = 5;
     public final static byte LOCK_DATA_COMMAND_TYPE_PIPELINE = 6;
 
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_NUMBER = 0x01;
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_ARRAY  = 0x02;
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_KV     = 0x04;
+    public final static byte LOCK_DATA_FLAG_CONTAINS_PROPERTY = 0x10;
+
     int getCommandType();
     byte[] getRequestId();
     ICommand parseCommand(byte[] buf);
