@@ -5,6 +5,7 @@ import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
 import io.github.snower.jaslock.datas.LockData;
 import io.github.snower.jaslock.datas.LockSetData;
+import io.github.snower.jaslock.datas.LockUnsetData;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -312,7 +313,7 @@ public class Event extends AbstractExecution {
             }
 
             try {
-                waitLock.acquire();
+                waitLock.acquire(new LockUnsetData());
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
                 synchronized (this) {
                     if(eventLock == null) {
@@ -321,7 +322,7 @@ public class Event extends AbstractExecution {
                 }
 
                 try {
-                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, new LockUnsetData());
                     try {
                         eventLock.release();
                     } catch (SlockException ignored2) {}
@@ -340,7 +341,7 @@ public class Event extends AbstractExecution {
             }
         }
         try {
-            waitLock.acquire();
+            waitLock.acquire(new LockUnsetData());
         } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
             throw new EventWaitTimeoutException();
         }
@@ -409,7 +410,7 @@ public class Event extends AbstractExecution {
                 }
             }
 
-            waitLock.acquire((byte) 0, callbackCommandResult -> {
+            waitLock.acquire((byte) 0, new LockUnsetData(), callbackCommandResult -> {
                 try {
                     callbackCommandResult.getResult();
                 } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {
@@ -420,7 +421,7 @@ public class Event extends AbstractExecution {
                     }
 
                     try {
-                        eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                        eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, new LockUnsetData());
                         try {
                             eventLock.release();
                         } catch (SlockException ignored2) {}
@@ -445,7 +446,7 @@ public class Event extends AbstractExecution {
                 waitLock = new Lock(database, lockKey, null, timeout | 0x02000000, 0, (short) 1, (byte) 0);
             }
         }
-        waitLock.acquire((byte) 0, callbackCommandResult -> {
+        waitLock.acquire((byte) 0, new LockUnsetData(), callbackCommandResult -> {
             try {
                 callbackCommandResult.getResult();
             } catch (LockTimeoutException | ClientCommandTimeoutException ignored) {

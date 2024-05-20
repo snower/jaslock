@@ -6,6 +6,7 @@ import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
 import io.github.snower.jaslock.datas.LockData;
 import io.github.snower.jaslock.datas.LockSetData;
+import io.github.snower.jaslock.datas.LockUnsetData;
 import io.github.snower.jaslock.exceptions.*;
 
 import java.io.ByteArrayOutputStream;
@@ -236,7 +237,7 @@ public class GroupEvent extends AbstractExecution {
         Lock waitLock = new Lock(database, lockKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
                 0, (short) 0, (byte) 0);
         try {
-            LockCommandResult lockCommandResult = waitLock.acquire((byte) 0);
+            LockCommandResult lockCommandResult = waitLock.acquire((byte) 0, new LockUnsetData());
             byte[] rlockId = lockCommandResult.getLockId();
             if (!Arrays.equals(lockId, rlockId)) {
                 versionId = ((long) rlockId[0]) | (((long) rlockId[1])<<8) | (((long) rlockId[2])<<16) | (((long) rlockId[3])<<24)
@@ -246,15 +247,13 @@ public class GroupEvent extends AbstractExecution {
             Lock eventLock = new Lock(database, encodeLockId(0, versionId), lockKey,
                     this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16), expried, (short) 0, (byte) 0);
             try {
-                eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, new LockUnsetData());
                 try {
                     eventLock.release();
-                } catch (SlockException ignored2) {
-                }
+                } catch (SlockException ignored2) {}
                 currentLockData = eventLock.getCurrentLockData();
                 return;
-            } catch (SlockException ignored2) {
-            }
+            } catch (SlockException ignored2) {}
             throw new EventWaitTimeoutException();
         }
         currentLockData = waitLock.getCurrentLockData();
@@ -289,7 +288,7 @@ public class GroupEvent extends AbstractExecution {
         Lock waitLock = new Lock(database, lockKey, lockId, timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16),
                 0, (short) 0, (byte) 0);
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
-        waitLock.acquire((byte) 0, callbackCommandResult -> {
+        waitLock.acquire((byte) 0, new LockUnsetData(), callbackCommandResult -> {
             try {
                 LockCommandResult lockCommandResult = (LockCommandResult) callbackCommandResult.getResult();
                 byte[] rlockId = lockCommandResult.getLockId();
@@ -303,7 +302,7 @@ public class GroupEvent extends AbstractExecution {
                 Lock eventLock = new Lock(database, encodeLockId(0, versionId), lockKey,
                         this.timeout | (ICommand.TIMEOUT_FLAG_LESS_LOCK_VERSION_IS_LOCK_SUCCED << 16), expried, (short) 0, (byte) 0);
                 try {
-                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED);
+                    eventLock.acquire(ICommand.LOCK_FLAG_UPDATE_WHEN_LOCKED, new LockUnsetData());
                     try {
                         eventLock.release();
                     } catch (SlockException ignored2) {
