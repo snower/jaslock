@@ -36,6 +36,7 @@ public interface ICommand {
     public final static byte UNLOCK_FLAG_UNLOCK_TREE_LOCK                = 0x10;
     public final static byte UNLOCK_FLAG_CONTAINS_DATA                   = 0x20;
 
+    public final static int TIMEOUT_FLAG_RCOUNT_IS_PRIORITY                    = 0x0010;
     public final static int TIMEOUT_FLAG_PUSH_SUBSCRIBE                        = 0x0020;
     public final static int TIMEOUT_FLAG_MINUTE_TIME                           = 0x0040;
     public final static int TIMEOUT_FLAG_REVERSE_KEY_LOCK_WHEN_TIMEOUT         = 0x0080;
@@ -73,10 +74,11 @@ public interface ICommand {
     public final static byte LOCK_DATA_COMMAND_TYPE_EXECUTE  = 5;
     public final static byte LOCK_DATA_COMMAND_TYPE_PIPELINE = 6;
 
-    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_NUMBER = 0x01;
-    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_ARRAY  = 0x02;
-    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_KV     = 0x04;
-    public final static byte LOCK_DATA_FLAG_CONTAINS_PROPERTY = 0x10;
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_NUMBER       = 0x01;
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_ARRAY        = 0x02;
+    public final static byte LOCK_DATA_FLAG_VALUE_TYPE_KV           = 0x04;
+    public final static byte LOCK_DATA_FLAG_CONTAINS_PROPERTY       = 0x10;
+    public final static byte LOCK_DATA_FLAG_PROCESS_FIRST_OR_LAST   = 0x20;
 
     int getCommandType();
     byte[] getRequestId();

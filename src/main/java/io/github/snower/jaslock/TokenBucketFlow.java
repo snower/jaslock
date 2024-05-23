@@ -11,18 +11,37 @@ import java.util.function.Consumer;
 
 public class TokenBucketFlow extends AbstractExecution {
     private final double period;
+    private byte priority;
 
-    public TokenBucketFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, double period) {
+    public TokenBucketFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, double period, byte priority) {
         super(database, flowKey, timeout, 0, (short) (count > 0 ? count - 1 : 0), (byte) 0);
         this.period = period;
+        this.priority = priority;
+    }
+
+    public TokenBucketFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, double period) {
+        this(database, flowKey, count, timeout, period, (byte) 0);
+    }
+
+    public TokenBucketFlow(SlockDatabase database, String flowKey, short count, int timeout, double period, byte priority) {
+        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, period, priority);
     }
 
     public TokenBucketFlow(SlockDatabase database, String flowKey, short count, int timeout, double period) {
-        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, period);
+        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, period, (byte) 0);
+    }
+
+    public byte getPriority() {
+        return priority;
+    }
+
+    public void setPriority(byte priority) {
+        this.priority = priority;
     }
 
     public void acquire() throws SlockException {
         Lock flowLock;
+        final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
         if(period < 3) {
             synchronized (this) {
                 int expried = (int)Math.ceil(period * 1000) | 0x04000000;
@@ -53,6 +72,7 @@ public class TokenBucketFlow extends AbstractExecution {
     public CallbackFuture<Boolean> acquire(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         CallbackFuture<Boolean> callbackFuture = new CallbackFuture<>(callback);
         Lock flowLock;
+        final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
         if(period < 3) {
             synchronized (this) {
                 int expried = (int)Math.ceil(period * 1000) | 0x04000000;

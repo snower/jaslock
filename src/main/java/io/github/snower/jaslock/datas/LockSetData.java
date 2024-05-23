@@ -12,4 +12,12 @@ public class LockSetData extends LockData {
     public LockSetData(String value) {
         super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_SET, (byte) 0, value.getBytes(StandardCharsets.UTF_8));
     }
+
+    public LockSetData(byte[] value, byte commandFlag) {
+        super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_SET, commandFlag, value);
+    }
+
+    public LockSetData(String value, byte commandFlag) {
+        super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_SET, commandFlag, value.getBytes(StandardCharsets.UTF_8));
+    }
 }

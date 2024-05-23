@@ -8,21 +8,41 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 public class MaxConcurrentFlow extends AbstractExecution {
+    private byte priority;
     private volatile Lock flowLock;
 
-    public MaxConcurrentFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, int expried) {
+    public MaxConcurrentFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, int expried, byte priority) {
         super(database, flowKey, timeout, expried, (short) (count > 0 ? count - 1 : 0), (byte) 0);
+
+        this.priority = priority;
+    }
+
+    public MaxConcurrentFlow(SlockDatabase database, byte[] flowKey, short count, int timeout, int expried) {
+        this(database, flowKey, count, timeout, expried, (byte) 0);
+    }
+
+    public MaxConcurrentFlow(SlockDatabase database, String flowKey, short count, int timeout, int expried, byte priority) {
+        this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, expried, priority);
     }
 
     public MaxConcurrentFlow(SlockDatabase database, String flowKey, short count, int timeout, int expried) {
         this(database, flowKey.getBytes(StandardCharsets.UTF_8), count, timeout, expried);
     }
 
+    public byte getPriority() {
+        return priority;
+    }
+
+    public void setPriority(byte priority) {
+        this.priority = priority;
+    }
+
     public void acquire() throws SlockException {
         if (flowLock == null) {
             synchronized (this) {
                 if (flowLock == null) {
-                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                    final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
+                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, priority);
                 }
             }
         }
@@ -34,7 +54,8 @@ public class MaxConcurrentFlow extends AbstractExecution {
         if (flowLock == null) {
             synchronized (this) {
                 if (flowLock == null) {
-                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                    final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
+                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, priority);
                 }
             }
         }
@@ -53,7 +74,8 @@ public class MaxConcurrentFlow extends AbstractExecution {
         if (flowLock == null) {
             synchronized (this) {
                 if (flowLock == null) {
-                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                    final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
+                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, priority);
                 }
             }
         }
@@ -65,7 +87,8 @@ public class MaxConcurrentFlow extends AbstractExecution {
         if (flowLock == null) {
             synchronized (this) {
                 if (flowLock == null) {
-                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, (byte) 0);
+                    final int timeout = priority > 0 ? this.timeout | 0x00100000 : this.timeout;
+                    flowLock = new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, count, priority);
                 }
             }
         }

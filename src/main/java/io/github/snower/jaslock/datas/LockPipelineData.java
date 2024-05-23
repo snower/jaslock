@@ -11,6 +11,11 @@ public class LockPipelineData extends LockData {
         this.lockDatas = lockDatas;
     }
 
+    public LockPipelineData(LockData[] lockDatas, byte commandFlag) {
+        super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, commandFlag, null);
+        this.lockDatas = lockDatas;
+    }
+
     @Override
     public byte[] dumpData() throws LockDataException {
         if (lockDatas == null || lockDatas.length == 0) {

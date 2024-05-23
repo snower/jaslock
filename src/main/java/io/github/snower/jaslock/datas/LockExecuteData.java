@@ -11,4 +11,12 @@ public class LockExecuteData extends LockData {
     public LockExecuteData(LockCommand lockCommand) {
         this(ICommand.LOCK_DATA_STAGE_LOCK, lockCommand);
     }
+
+    public LockExecuteData(byte commandStage, LockCommand lockCommand, byte commandFlag) {
+        super(commandStage, ICommand.LOCK_DATA_COMMAND_TYPE_EXECUTE, commandFlag, lockCommand.dumpCommand());
+    }
+
+    public LockExecuteData(LockCommand lockCommand, byte commandFlag) {
+        this(ICommand.LOCK_DATA_STAGE_LOCK, lockCommand, commandFlag);
+    }
 }

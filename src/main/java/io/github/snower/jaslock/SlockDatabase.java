@@ -97,12 +97,28 @@ public class SlockDatabase {
         return new MaxConcurrentFlow(this, flowKey.getBytes(StandardCharsets.UTF_8), count, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried));
     }
 
+    public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried, byte priority) {
+        return new MaxConcurrentFlow(this, flowKey, count, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried), priority);
+    }
+
+    public MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried, byte priority) {
+        return new MaxConcurrentFlow(this, flowKey.getBytes(StandardCharsets.UTF_8), count, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried), priority);
+    }
+
     public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
         return new TokenBucketFlow(this, flowKey, count, mergeTimeoutFlag(timeout), period);
     }
 
     public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return new TokenBucketFlow(this, flowKey.getBytes(StandardCharsets.UTF_8), count, mergeTimeoutFlag(timeout), period);
+    }
+
+    public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period, byte priority) {
+        return new TokenBucketFlow(this, flowKey, count, mergeTimeoutFlag(timeout), period, priority);
+    }
+
+    public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period, byte priority) {
+        return new TokenBucketFlow(this, flowKey.getBytes(StandardCharsets.UTF_8), count, mergeTimeoutFlag(timeout), period, priority);
     }
 
     public GroupEvent newGroupEvent(byte[] groupKey, long clientId, long versionId, int timeout, int expried) {
@@ -127,5 +143,13 @@ public class SlockDatabase {
 
     public TreeLock newTreeLock(String lockKey, int timeout, int expried) {
         return new TreeLock(this, lockKey, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried));
+    }
+
+    public PriorityLock newPriorityLock(byte[] lockKey, byte priority, int timeout, int expried) {
+        return new PriorityLock(this, lockKey, priority, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried));
+    }
+
+    public PriorityLock newPriorityLock(String lockKey, byte priority, int timeout, int expried) {
+        return new PriorityLock(this, lockKey, priority, mergeTimeoutFlag(timeout), mergeExpriedFlag(expried));
     }
 }

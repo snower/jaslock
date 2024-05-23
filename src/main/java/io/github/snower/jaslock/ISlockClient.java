@@ -36,12 +36,18 @@ public interface ISlockClient {
     Semaphore newSemaphore(String semaphoreKey, short count, int timeout, int expried);
     MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried);
     MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried);
+    MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried, byte priority);
+    MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried, byte priority);
     TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period);
     TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period);
+    TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period, byte priority);
+    TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period, byte priority);
     GroupEvent newGroupEvent(byte[] groupKey, long clientId, long versionId, int timeout, int expried);
     GroupEvent newGroupEvent(String groupKey, long clientId, long versionId, int timeout, int expried);
     TreeLock newTreeLock(byte[] parentKey, byte[] lockKey, int timeout, int expried);
     TreeLock newTreeLock(String parentKey, String lockKey, int timeout, int expried);
     TreeLock newTreeLock(byte[] lockKey, int timeout, int expried);
     TreeLock newTreeLock(String lockKey, int timeout, int expried);
+    PriorityLock newPriorityLock(byte[] lockKey, byte priority, int timeout, int expried);
+    PriorityLock newPriorityLock(String lockKey, byte priority, int timeout, int expried);
 }

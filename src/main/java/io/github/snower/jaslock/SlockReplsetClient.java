@@ -301,6 +301,16 @@ public class SlockReplsetClient implements ISlockClient {
     }
 
     @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(byte[] flowKey, short count, int timeout, int expried, byte priority) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried, priority);
+    }
+
+    @Override
+    public MaxConcurrentFlow newMaxConcurrentFlow(String flowKey, short count, int timeout, int expried, byte priority) {
+        return selectDatabase((byte) 0).newMaxConcurrentFlow(flowKey, count, timeout, expried, priority);
+    }
+
+    @Override
     public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period) {
         return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
     }
@@ -308,6 +318,16 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period) {
         return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(byte[] flowKey, short count, int timeout, double period, byte priority) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period, priority);
+    }
+
+    @Override
+    public TokenBucketFlow newTokenBucketFlow(String flowKey, short count, int timeout, double period, byte priority) {
+        return selectDatabase((byte) 0).newTokenBucketFlow(flowKey, count, timeout, period, priority);
     }
 
     @Override
@@ -338,5 +358,15 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public TreeLock newTreeLock(String lockKey, int timeout, int expried) {
         return selectDatabase((byte) 0).newTreeLock(lockKey, timeout, expried);
+    }
+
+    @Override
+    public PriorityLock newPriorityLock(byte[] lockKey, byte priority, int timeout, int expried) {
+        return selectDatabase((byte) 0).newPriorityLock(lockKey, priority, timeout, expried);
+    }
+
+    @Override
+    public PriorityLock newPriorityLock(String lockKey, byte priority, int timeout, int expried) {
+        return selectDatabase((byte) 0).newPriorityLock(lockKey, priority, timeout, expried);
     }
 }
