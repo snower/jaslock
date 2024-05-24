@@ -55,6 +55,7 @@ public class SlockClient implements Runnable, ISlockClient {
     private ConcurrentHashMap<BytesKey, Command> requests;
     private SlockReplsetClient replsetClient;
     private CallbackExecutorManager callbackExecutorManager;
+    private final java.util.concurrent.locks.ReentrantLock reentrantLock = new java.util.concurrent.locks.ReentrantLock();
 
     public SlockClient() {
         this("127.0.0.1", 5658);
@@ -187,8 +188,7 @@ public class SlockClient implements Runnable, ISlockClient {
         if (socket != null) {
             try {
                 socket.close();
-            } catch (IOException ignored) {
-            }
+            } catch (IOException ignored) {}
         }
 
         synchronized (this) {
@@ -345,7 +345,8 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     protected void closeSocket() {
-        synchronized (this) {
+        reentrantLock.lock();
+        try {
             if (socket != null) {
                 try {
                     socket.close();
@@ -358,6 +359,8 @@ public class SlockClient implements Runnable, ISlockClient {
                     replsetClient.removeLivedClient(this);
                 }
             }
+        } finally {
+            reentrantLock.unlock();
         }
     }
 
@@ -416,7 +419,8 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         BytesKey requestId = new BytesKey(command.getRequestId());
-        synchronized (this) {
+        reentrantLock.lock();
+        try {
             if(outputStream == null) {
                 throw new ClientUnconnectException("client not connected " + host + ":" + port);
             }
@@ -435,6 +439,8 @@ public class SlockClient implements Runnable, ISlockClient {
                 } catch (IOException ignored) {}
                 throw new ClientOutputStreamException("Client writes data abnormally: " + e);
             }
+        } finally {
+            reentrantLock.unlock();
         }
 
         if(!command.waiteWaiter()) {
@@ -464,7 +470,8 @@ public class SlockClient implements Runnable, ISlockClient {
             callback.accept(callbackCommandResult);
         });
 
-        synchronized (this) {
+        reentrantLock.lock();
+        try {
             if(outputStream == null) {
                 throw new ClientUnconnectException("client not connected " + host + ":" + port);
             }
@@ -484,6 +491,8 @@ public class SlockClient implements Runnable, ISlockClient {
                 } catch (IOException ignored) {}
                 throw new ClientOutputStreamException("Client writes data abnormally: " + e);
             }
+        } finally {
+            reentrantLock.unlock();
         }
     }
 
