@@ -9,7 +9,7 @@ public class LockExecuteData extends LockData {
     }
 
     public LockExecuteData(LockCommand lockCommand) {
-        this(ICommand.LOCK_DATA_STAGE_LOCK, lockCommand);
+        this(ICommand.LOCK_DATA_STAGE_CURRENT, lockCommand);
     }
 
     public LockExecuteData(byte commandStage, LockCommand lockCommand, byte commandFlag) {
@@ -17,6 +17,6 @@ public class LockExecuteData extends LockData {
     }
 
     public LockExecuteData(LockCommand lockCommand, byte commandFlag) {
-        this(ICommand.LOCK_DATA_STAGE_LOCK, lockCommand, commandFlag);
+        this(ICommand.LOCK_DATA_STAGE_CURRENT, lockCommand, commandFlag);
     }
 }

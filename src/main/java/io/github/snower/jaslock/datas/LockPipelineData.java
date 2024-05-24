@@ -7,12 +7,12 @@ public class LockPipelineData extends LockData {
     private final LockData[] lockDatas;
 
     public LockPipelineData(LockData[] lockDatas) {
-        super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, (byte) 0, null);
+        super(ICommand.LOCK_DATA_STAGE_CURRENT, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, (byte) 0, null);
         this.lockDatas = lockDatas;
     }
 
     public LockPipelineData(LockData[] lockDatas, byte commandFlag) {
-        super(ICommand.LOCK_DATA_STAGE_LOCK, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, commandFlag, null);
+        super(ICommand.LOCK_DATA_STAGE_CURRENT, ICommand.LOCK_DATA_COMMAND_TYPE_PIPELINE, commandFlag, null);
         this.lockDatas = lockDatas;
     }
 
