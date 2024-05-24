@@ -3,7 +3,7 @@ package io.github.snower.jaslock.callback;
 import java.util.concurrent.TimeUnit;
 
 public class ExecutorOption {
-    public final static ExecutorOption DefaultOption = new ExecutorOption(1, 4, 0, 120, TimeUnit.SECONDS);
+    public final static ExecutorOption DefaultOption = new ExecutorOption(2, 4, 65536, 120, TimeUnit.SECONDS);
 
     private final int workerCount;
     private final int maxWorkerCount;
