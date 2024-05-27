@@ -5,6 +5,8 @@ import io.github.snower.jaslock.datas.LockResultData;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractExecution {
     protected final SlockDatabase database;
@@ -117,5 +119,33 @@ public abstract class AbstractExecution {
             return 0L;
         }
         return currentLockData.getDataAsLong();
+    }
+
+    public List<byte[]> getCurrentLockDataAsList() {
+        if (currentLockData == null) {
+            return null;
+        }
+        return currentLockData.getRawDataAsList();
+    }
+
+    public List<String> getCurrentLockDataAsStringList() {
+        if (currentLockData == null) {
+            return null;
+        }
+        return currentLockData.getRawDataAsStringList();
+    }
+
+    public Map<String, byte[]> getCurrentLockDataAsMap() {
+        if (currentLockData == null) {
+            return null;
+        }
+        return currentLockData.getRawDataAsMap();
+    }
+
+    public Map<String, String> getCurrentLockDataAsStringMap() {
+        if (currentLockData == null) {
+            return null;
+        }
+        return currentLockData.getRawDataAsStringMap();
     }
 }

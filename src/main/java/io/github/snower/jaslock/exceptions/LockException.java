@@ -5,6 +5,9 @@ import io.github.snower.jaslock.commands.CommandResult;
 import io.github.snower.jaslock.commands.LockCommandResult;
 import io.github.snower.jaslock.datas.LockResultData;
 
+import java.util.List;
+import java.util.Map;
+
 public class LockException extends SlockException {
     static String[] ERROR_MSG = new String[]{
             "OK",
@@ -75,5 +78,33 @@ public class LockException extends SlockException {
             return ((LockCommandResult) commandResult).getLockResultData().getDataAsLong();
         }
         return 0L;
+    }
+
+    public List<byte[]> getLockDataAsList() {
+        if (commandResult instanceof LockCommandResult) {
+            return ((LockCommandResult) commandResult).getLockResultData().getRawDataAsList();
+        }
+        return null;
+    }
+
+    public List<String> getLockDataAsStringList() {
+        if (commandResult instanceof LockCommandResult) {
+            return ((LockCommandResult) commandResult).getLockResultData().getRawDataAsStringList();
+        }
+        return null;
+    }
+
+    public Map<String, byte[]> getLockDataAsMap() {
+        if (commandResult instanceof LockCommandResult) {
+            return ((LockCommandResult) commandResult).getLockResultData().getRawDataAsMap();
+        }
+        return null;
+    }
+
+    public Map<String, String> getLockDataAsStringMap() {
+        if (commandResult instanceof LockCommandResult) {
+            return ((LockCommandResult) commandResult).getLockResultData().getRawDataAsStringMap();
+        }
+        return null;
     }
 }

@@ -817,6 +817,50 @@ public class ClientTest
     }
 
     @Test
+    public void testPriorityLock() throws Exception {
+        SlockClient client = new SlockClient(clientHost, clinetPort);
+        client.open();
+        client.enableAsyncCallback();
+
+        try {
+            AtomicReference<Exception> exception = new AtomicReference<>();
+            List<PriorityLock> priorityLocks = new ArrayList<>();
+            CountDownLatch countDownLatch = new CountDownLatch(1000);
+            for (int i = 0; i < 1000; i++) {
+                PriorityLock priorityLock = client.newPriorityLock("testPriorityLock",(byte) (random.nextInt(50) + 1), 5, 10);
+                priorityLock.acquire(booleanCallbackFuture -> {
+                    try {
+                        booleanCallbackFuture.get();
+                        priorityLocks.add(priorityLock);
+                        priorityLock.release(booleanCallbackFuture1 -> {
+                            try {
+                                booleanCallbackFuture1.get();
+                                countDownLatch.countDown();
+                            } catch (Exception e) {
+                                exception.set(e);
+                            }
+                        });
+                    } catch (Exception e) {
+                        exception.set(e);
+                    }
+                });
+            }
+            countDownLatch.await();
+            if (exception.get() != null) {
+                throw exception.get();
+            }
+            byte currentPriority = 0;
+            for (PriorityLock priorityLock : priorityLocks) {
+                if (priorityLock.getPriority() < currentPriority) {
+                    throw new SlockException("Priority Error");
+                }
+            }
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
     public void testLockData() throws IOException, SlockException, ExecutionException, InterruptedException {
         SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
@@ -901,6 +945,59 @@ public class ClientTest
             } catch (LockTimeoutException e) {}
             lock1.release();
             Assert.assertEquals(lock1.getCurrentLockDataAsString(), "aaa");
+
+            lock1 = client.newLock("lockdata7".getBytes(StandardCharsets.UTF_8), 0, 10);
+            lock1.setCount((short) 10);
+            lock2 = client.newLock("lockdata7".getBytes(StandardCharsets.UTF_8), 0, 10);
+            lock2.setCount((short) 10);
+            lock1.acquire(new LockPushData("aaa"));
+            Assert.assertNull(lock1.getCurrentLockDataAsList());
+            lock2.acquire(new LockPushData("bbb"));
+            List<String> values = lock2.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(1, values.size());
+            Assert.assertEquals(values.get(0), "aaa");
+            lock1.release(new LockPushData("ccc"));
+            values = lock1.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(2, values.size());
+            Assert.assertEquals(values.get(0), "aaa");
+            Assert.assertEquals(values.get(1), "bbb");
+            lock2.release();
+            values = lock2.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(3, values.size());
+            Assert.assertEquals(values.get(0), "aaa");
+            Assert.assertEquals(values.get(1), "bbb");
+            Assert.assertEquals(values.get(2), "ccc");
+
+            lock1 = client.newLock("lockdata8".getBytes(StandardCharsets.UTF_8), 0, 10);
+            lock1.setCount((short) 10);
+            lock2 = client.newLock("lockdata8".getBytes(StandardCharsets.UTF_8), 0, 10);
+            lock2.setCount((short) 10);
+            lock1.acquire(new LockPushData("aaa"));
+            Assert.assertNull(lock1.getCurrentLockDataAsList());
+            lock1.update(new LockPushData("bbb"));
+            Assert.assertNotNull(lock1.getCurrentLockDataAsList());
+            lock1.update(new LockPushData("ccc"));
+            Assert.assertNotNull(lock1.getCurrentLockDataAsList());
+            lock2.acquire(new LockPopData(1));
+            values = lock2.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(3, values.size());
+            Assert.assertEquals(values.get(0), "aaa");
+            Assert.assertEquals(values.get(1), "bbb");
+            Assert.assertEquals(values.get(2), "ccc");
+            lock1.release(new LockPopData(4));
+            values = lock1.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(2, values.size());
+            Assert.assertEquals(values.get(0), "bbb");
+            Assert.assertEquals(values.get(1), "ccc");
+            lock2.release();
+            values = lock2.getCurrentLockDataAsStringList();
+            Assert.assertNotNull(values);
+            Assert.assertEquals(0, values.size());
         } finally {
             client.close();
         }
