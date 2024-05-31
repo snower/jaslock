@@ -11,7 +11,7 @@ High-performance distributed sync service and atomic DB. Provides good multi-cor
 <dependency>
     <groupId>io.github.snower</groupId>
     <artifactId>jaslock</artifactId>
-    <version>1.0.11</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
