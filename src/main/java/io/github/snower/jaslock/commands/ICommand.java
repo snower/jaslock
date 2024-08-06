@@ -36,6 +36,7 @@ public interface ICommand {
     public final static byte UNLOCK_FLAG_UNLOCK_TREE_LOCK                = 0x10;
     public final static byte UNLOCK_FLAG_CONTAINS_DATA                   = 0x20;
 
+    public final static int TIMEOUT_FLAG_TIMEOUT_WHEN_CONTAINS_DATA            = 0x0008;
     public final static int TIMEOUT_FLAG_RCOUNT_IS_PRIORITY                    = 0x0010;
     public final static int TIMEOUT_FLAG_PUSH_SUBSCRIBE                        = 0x0020;
     public final static int TIMEOUT_FLAG_MINUTE_TIME                           = 0x0040;
