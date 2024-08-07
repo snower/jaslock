@@ -22,6 +22,7 @@ public interface ISlockClient {
     void close();
     CommandResult sendCommand(Command command) throws SlockException;
     void sendCommand(Command command, Consumer<CallbackCommandResult> callback) throws SlockException;
+    void writeCommand(Command command) throws SlockException;
     boolean ping() throws SlockException;
     SlockDatabase selectDatabase(byte dbId);
     Lock newLock(byte[] lockKey, int timeout, int expried);

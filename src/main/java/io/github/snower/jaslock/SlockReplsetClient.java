@@ -222,6 +222,23 @@ public class SlockReplsetClient implements ISlockClient {
     }
 
     @Override
+    public void writeCommand(Command command) throws SlockException {
+        if(closed) {
+            throw new ClientClosedException("client has been closed");
+        }
+
+        try {
+            SlockClient client = livedLeaderClient;
+            if (client == null) {
+                client = livedClients.getFirst();
+            }
+            client.writeCommand(command);
+        } catch (NoSuchElementException e) {
+            throw new ClientUnconnectException("clients not connected");
+        }
+    }
+
+    @Override
     public boolean ping() throws SlockException {
         PingCommand pingCommand = new PingCommand();
         PingCommandResult pingCommandResult = (PingCommandResult) sendCommand(pingCommand);

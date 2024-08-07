@@ -497,6 +497,35 @@ public class SlockClient implements Runnable, ISlockClient {
     }
 
     @Override
+    public void writeCommand(Command command) throws SlockException {
+        if(closed) {
+            throw new ClientClosedException("client has been closed");
+        }
+
+        byte[] buf = command.dumpCommand();
+        reentrantLock.lock();
+        try {
+            if(outputStream == null) {
+                throw new ClientUnconnectException("client not connected " + host + ":" + port);
+            }
+            try {
+                outputStream.write(buf);
+                byte[] extraData = command.getExtraData();
+                if (extraData != null) {
+                    outputStream.write(extraData);
+                }
+            } catch (IOException e) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {}
+                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+            }
+        } finally {
+            reentrantLock.unlock();
+        }
+    }
+
+    @Override
     public boolean ping() throws SlockException {
         PingCommand pingCommand = new PingCommand();
         PingCommandResult pingCommandResult = (PingCommandResult) sendCommand(pingCommand);
