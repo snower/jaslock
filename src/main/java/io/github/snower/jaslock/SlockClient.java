@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class SlockClient implements Runnable, ISlockClient {
-    private static final class BytesKey {
+    protected static final class BytesKey {
         private final byte[] bytes;
         private int bytesHash = 0;
 
@@ -85,7 +85,7 @@ public class SlockClient implements Runnable, ISlockClient {
         this(host, port);
         this.replsetClient = replsetClient;
         this.databases = databases;
-        this.requests = new ConcurrentHashMap<>();
+        this.requests = replsetClient.getRequests();
     }
 
     @Override
@@ -197,6 +197,9 @@ public class SlockClient implements Runnable, ISlockClient {
                 Command command = requests.remove(requestId);
                 if(command == null) {
                     continue;
+                }
+                if (replsetClient != null && command.getRetryType() == 2) {
+                    replsetClient.removePendingRequestCommand(command);
                 }
                 command.commandResult = null;
                 command.wakeupWaiter();
@@ -333,6 +336,9 @@ public class SlockClient implements Runnable, ISlockClient {
                 if(command == null) {
                     continue;
                 }
+                if (replsetClient != null && command.getRetryType() == 2) {
+                    replsetClient.removePendingRequestCommand(command);
+                }
                 command.commandResult = null;
                 command.wakeupWaiter();
             }
@@ -401,6 +407,9 @@ public class SlockClient implements Runnable, ISlockClient {
                             if(command == null) {
                                 continue;
                             }
+                            if (replsetClient != null && command.getRetryType() == 2) {
+                                replsetClient.removePendingRequestCommand(command);
+                            }
                             command.commandResult = null;
                             command.wakeupWaiter();
                         }
@@ -426,14 +435,23 @@ public class SlockClient implements Runnable, ISlockClient {
             } else if ((initType & ICommand.INIT_TYPE_FLAG_IS_LEADER) != 0 && (initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_IS_LEADER) == 0) {
                 replsetClient.removeLivedLeaderClient(this);
             }
+            if ((initType & ICommand.INIT_TYPE_FLAG_HAS_LEADER) == 0 && (initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_HAS_LEADER) != 0) {
+                replsetClient.wakeupPendingRequestCommands( this);
+            }
         }
         initType = initCommandResult.getInitType();
     }
 
     protected void handleCommand(CommandResult commandResult) {
         BytesKey requestId = new BytesKey(commandResult.getRequestId());
-        if (!requests.containsKey(requestId)) {
-            return;
+        if (replsetClient != null && commandResult.getResult() == ICommand.COMMAND_RESULT_STATE_ERROR && commandResult instanceof LockCommandResult) {
+            Command command = requests.get(requestId);
+            if(command == null) {
+                return;
+            }
+            if (command.getRetryType() < 2 && replsetClient.doPendingRequestCommand(this, command)) {
+                return;
+            }
         }
         Command command = requests.remove(requestId);
         if(command == null) {
@@ -469,11 +487,17 @@ public class SlockClient implements Runnable, ISlockClient {
                     outputStream.write(extraData);
                 }
             } catch (IOException e) {
-                requests.remove(requestId);
-                try {
-                    socket.close();
-                } catch (IOException ignored) {}
-                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
+                    requests.remove(requestId);
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                } else {
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                }
             }
         } finally {
             reentrantLock.unlock();
@@ -481,10 +505,19 @@ public class SlockClient implements Runnable, ISlockClient {
 
         if(!command.waiteWaiter()) {
             requests.remove(requestId);
+            if (replsetClient != null && command.getRetryType() == 2) {
+                replsetClient.removePendingRequestCommand(command);
+            }
             throw new ClientCommandTimeoutException("The client waits for command execution to return a timeout");
         }
 
         if(command.commandResult == null) {
+            if (command.exception != null) {
+                if (command.exception instanceof SlockException) {
+                    throw (SlockException) command.exception;
+                }
+                throw new SlockException(command.exception.toString());
+            }
             throw new ClientClosedException("client has been closed");
         }
         return command.commandResult;
@@ -503,6 +536,9 @@ public class SlockClient implements Runnable, ISlockClient {
         BytesKey requestId = new BytesKey(command.getRequestId());
         CallbackCommand callbackCommand = callbackExecutorManager.addCommand(command, callback, callbackCommandResult -> {
             requests.remove(requestId);
+            if (replsetClient != null && command.getRetryType() == 2) {
+                replsetClient.removePendingRequestCommand(command);
+            }
             callback.accept(callbackCommandResult);
         });
 
@@ -520,12 +556,18 @@ public class SlockClient implements Runnable, ISlockClient {
                     outputStream.write(extraData);
                 }
             } catch (IOException e) {
-                requests.remove(requestId);
-                callbackCommand.close();
-                try {
-                    socket.close();
-                } catch (IOException ignored) {}
-                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
+                    requests.remove(requestId);
+                    callbackCommand.close();
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                } else {
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                }
             }
         } finally {
             reentrantLock.unlock();
@@ -551,10 +593,16 @@ public class SlockClient implements Runnable, ISlockClient {
                     outputStream.write(extraData);
                 }
             } catch (IOException e) {
-                try {
-                    socket.close();
-                } catch (IOException ignored) {}
-                throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                } else {
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {}
+                }
             }
         } finally {
             reentrantLock.unlock();

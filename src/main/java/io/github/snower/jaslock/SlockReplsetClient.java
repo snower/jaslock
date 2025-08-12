@@ -11,6 +11,8 @@ import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Consumer;
 
 public class SlockReplsetClient implements ISlockClient {
@@ -20,6 +22,8 @@ public class SlockReplsetClient implements ISlockClient {
     private final LinkedList<SlockClient> clients;
     private final LinkedList<SlockClient> livedClients;
     private volatile SlockClient livedLeaderClient;
+    private final ConcurrentHashMap<SlockClient.BytesKey, Command> requests;
+    private final ConcurrentLinkedDeque<Command> pendingRequests;
     private boolean closed;
     private final SlockDatabase[] databases;
     private CallbackExecutorManager callbackExecutorManager;
@@ -33,6 +37,8 @@ public class SlockReplsetClient implements ISlockClient {
         this.clients = new LinkedList<>();
         this.livedClients = new LinkedList<>();
         this.livedLeaderClient = null;
+        this.requests = new ConcurrentHashMap<>();
+        this.pendingRequests = new ConcurrentLinkedDeque<>();
         this.closed = false;
         this.databases = new SlockDatabase[256];
     }
@@ -49,6 +55,10 @@ public class SlockReplsetClient implements ISlockClient {
         if (enableAsyncCallback) {
             this.enableAsyncCallback();
         }
+    }
+
+    protected ConcurrentHashMap<SlockClient.BytesKey, Command> getRequests() {
+        return requests;
     }
 
     @Override
@@ -173,6 +183,7 @@ public class SlockReplsetClient implements ISlockClient {
                 this.livedLeaderClient = client;
             }
         }
+        this.wakeupPendingRequestCommands(client);
     }
 
     protected void removeLivedClient(SlockClient client) {
@@ -188,12 +199,54 @@ public class SlockReplsetClient implements ISlockClient {
         synchronized (this) {
             this.livedLeaderClient = client;
         }
+        this.wakeupPendingRequestCommands(client);
     }
 
     protected void removeLivedLeaderClient(SlockClient client) {
         synchronized (this) {
             if (client.equals(this.livedLeaderClient)) {
                 this.livedLeaderClient = null;
+            }
+        }
+    }
+
+    protected boolean doPendingRequestCommand(SlockClient client, Command command) {
+        if (closed) return false;
+        if (livedLeaderClient == null && livedClients.isEmpty()) return false;
+
+        if (command.getRetryType() < 1) {
+            try {
+                SlockClient currentClient = livedLeaderClient;
+                if (currentClient == null) {
+                    currentClient = livedClients.getFirst();
+                }
+                if (currentClient != client) {
+                    currentClient.writeCommand(command);
+                    command.setRetryType(1);
+                    return true;
+                }
+            } catch (Throwable ignored) {}
+        }
+        this.pendingRequests.add(command);
+        command.setRetryType(2);
+        return true;
+    }
+
+    protected void removePendingRequestCommand(Command command) {
+        this.pendingRequests.remove(command);
+    }
+
+    protected void wakeupPendingRequestCommands(SlockClient client) {
+        while (!this.pendingRequests.isEmpty()) {
+            Command command = this.pendingRequests.poll();
+            if (command == null) break;
+
+            command.setRetryType(3);
+            try {
+                client.writeCommand(command);
+            } catch (Throwable e) {
+                command.exception = e;
+                command.wakeupWaiter();
             }
         }
     }

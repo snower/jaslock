@@ -20,11 +20,21 @@ public class Command implements ICommand {
     protected byte[] requestId;
     protected Semaphore waiter;
     protected Consumer<CommandResult> waiterCallback;
+    protected int retryType = 0;
     public CommandResult commandResult;
+    public Throwable exception;
 
     public Command(byte commandType) {
         this.commandType = commandType;
         this.requestId = genRequestId();
+    }
+
+    public int getRetryType() {
+        return retryType;
+    }
+
+    public void setRetryType(int retryType) {
+        this.retryType = retryType;
     }
 
     public byte getMagic() {
@@ -44,8 +54,6 @@ public class Command implements ICommand {
     public byte[] getRequestId() {
         return requestId;
     }
-
-
 
     @Override
     public ICommand parseCommand(byte[] buf) {

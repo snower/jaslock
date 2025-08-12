@@ -126,7 +126,9 @@ public class CallbackExecutorManager {
 
             callbackExecutor.submit(() -> {
                 if (commandResult == null) {
-                    callback.accept(new CallbackCommandResult(command, null, new ClientClosedException("client has been closed")));
+                    callback.accept(new CallbackCommandResult(command, null, command.exception != null ?
+                            (command.exception instanceof SlockException ? (SlockException) command.exception : new SlockException(command.exception.toString()))
+                            : new ClientClosedException("client has been closed")));
                 } else {
                     callback.accept(new CallbackCommandResult(command, commandResult, null));
                 }
