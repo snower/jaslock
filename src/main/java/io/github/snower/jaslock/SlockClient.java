@@ -47,6 +47,7 @@ public class SlockClient implements Runnable, ISlockClient {
     private short defaultExpriedFlag;
     private boolean closed;
     private byte[] clientId;
+    private byte initType;
     private Thread thread;
     private Socket socket;
     private InputStream inputStream;
@@ -284,6 +285,12 @@ public class SlockClient implements Runnable, ISlockClient {
                                     handleCommand(pingResultCommand);
                                 }
                                 break;
+                            case ICommand.COMMAND_TYPE_INIT:
+                                InitCommandResult initCommandResult = new InitCommandResult();
+                                if (initCommandResult.parseCommand(buf) != null) {
+                                    handleInitCommand(initCommandResult);
+                                }
+                                break;
                         }
                     }
                 } catch (Exception ignored) {
@@ -315,7 +322,7 @@ public class SlockClient implements Runnable, ISlockClient {
 
         InitCommandResult initCommandResult = initClient();
         if(replsetClient != null) {
-            replsetClient.addLivedClient(this, initCommandResult.getInitType() == 1);
+            replsetClient.addLivedClient(this, (initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_IS_LEADER) != 0);
         }
     }
 
@@ -386,12 +393,41 @@ public class SlockClient implements Runnable, ISlockClient {
                 if(initCommandResult.getResult() != ICommand.COMMAND_RESULT_SUCCED) {
                     throw new IOException("init commnad error");
                 }
+
+                if ((initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_HA_CLIENT) == 0) {
+                    synchronized (this) {
+                        for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                            Command command = requests.remove(requestId);
+                            if(command == null) {
+                                continue;
+                            }
+                            command.commandResult = null;
+                            command.wakeupWaiter();
+                        }
+                    }
+                }
+                initType = initCommandResult.getInitType();
             }
             return initCommandResult;
         } catch (IOException e) {
             closeSocket();
             throw e;
         }
+    }
+
+    protected void handleInitCommand(InitCommandResult initCommandResult) {
+        if (initCommandResult.getResult() != ICommand.COMMAND_RESULT_SUCCED) return;
+
+        if (replsetClient != null) {
+            if ((initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_IS_SHUTDOWN) != 0) {
+                replsetClient.removeLivedClient(this);
+            } else if ((initType & ICommand.INIT_TYPE_FLAG_IS_LEADER) == 0 && (initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_IS_LEADER) != 0) {
+                replsetClient.addLivedLeaderClient(this);
+            } else if ((initType & ICommand.INIT_TYPE_FLAG_IS_LEADER) != 0 && (initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_IS_LEADER) == 0) {
+                replsetClient.removeLivedLeaderClient(this);
+            }
+        }
+        initType = initCommandResult.getInitType();
     }
 
     protected void handleCommand(CommandResult commandResult) {

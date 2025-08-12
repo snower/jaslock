@@ -22,6 +22,12 @@ public interface ICommand {
     public final static byte COMMAND_RESULT_ERROR = 0x0b;
     public final static byte COMMAND_RESULT_LOCK_ACK_WAITING = 0x0c;
 
+    public final static byte INIT_TYPE_FLAG_HA_CLIENT = 0x01;
+    public final static byte INIT_TYPE_FLAG_IS_TRANSPARENCY = 0x02;
+    public final static byte INIT_TYPE_FLAG_IS_LEADER = 0x04;
+    public final static byte INIT_TYPE_FLAG_HAS_LEADER = 0x08;
+    public final static byte INIT_TYPE_FLAG_IS_SHUTDOWN = 0x10;
+
     public final static byte LOCK_FLAG_SHOW_WHEN_LOCKED   = 0x01;
     public final static byte LOCK_FLAG_UPDATE_WHEN_LOCKED = 0x02;
     public final static byte LOCK_FLAG_FROM_AOF           = 0x04;

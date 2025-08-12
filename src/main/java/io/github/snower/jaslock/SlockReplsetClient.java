@@ -184,6 +184,20 @@ public class SlockReplsetClient implements ISlockClient {
         }
     }
 
+    protected void addLivedLeaderClient(SlockClient client) {
+        synchronized (this) {
+            this.livedLeaderClient = client;
+        }
+    }
+
+    protected void removeLivedLeaderClient(SlockClient client) {
+        synchronized (this) {
+            if (client.equals(this.livedLeaderClient)) {
+                this.livedLeaderClient = null;
+            }
+        }
+    }
+
     @Override
     public CommandResult sendCommand(Command command) throws SlockException {
         if(closed) {
