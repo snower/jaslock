@@ -54,4 +54,9 @@ public class Semaphore extends AbstractExecution {
         });
         return callbackFuture;
     }
+
+    public AutoCloseable with() throws SlockException {
+        acquire();
+        return this::release;
+    }
 }

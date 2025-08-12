@@ -339,4 +339,8 @@ public class GroupEvent extends AbstractExecution {
         byteArrayOutputStream.write((byte) ((clientId >> 56) & 0xff));
         return byteArrayOutputStream.toByteArray();
     }
+
+    public AutoCloseable with() {
+        return this::wakeup;
+    }
 }

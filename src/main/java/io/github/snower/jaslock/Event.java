@@ -469,4 +469,14 @@ public class Event extends AbstractExecution {
         });
         return callbackFuture;
     }
+
+    public AutoCloseable with() {
+        return () -> {
+            if (defaultSeted) {
+                clear();
+            } else {
+                set();
+            }
+        };
+    }
 }

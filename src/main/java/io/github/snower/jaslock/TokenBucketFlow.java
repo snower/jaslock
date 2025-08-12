@@ -123,4 +123,9 @@ public class TokenBucketFlow extends AbstractExecution {
         });
         return callbackFuture;
     }
+
+    public AutoCloseable with() throws SlockException {
+        acquire();
+        return () -> {};
+    }
 }

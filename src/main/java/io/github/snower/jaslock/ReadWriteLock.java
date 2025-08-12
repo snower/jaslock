@@ -150,4 +150,9 @@ public class ReadWriteLock extends AbstractExecution {
     public CallbackFuture<Boolean> release(Consumer<CallbackFuture<Boolean>> callback) throws SlockException {
         return releaseWrite(callback);
     }
+
+    public AutoCloseable with() throws SlockException {
+        acquire();
+        return this::release;
+    }
 }

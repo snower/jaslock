@@ -30,13 +30,17 @@ public class ClientTest
     private static final int clinetPort = 5658;
 
     @Test
-    public void testClientLock() throws IOException, SlockException {
+    public void testClientLock() throws Exception {
         SlockClient client = new SlockClient(clientHost, clinetPort);
         client.open();
         try {
             Lock lock = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock.acquire();
             lock.release();
+
+            try (AutoCloseable ignored = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5).with()) {
+                System.out.println("lock1");
+            }
 
             Lock lock1 = client.newLock("test1".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock1.setCount((short) 10);
@@ -57,13 +61,17 @@ public class ClientTest
     }
 
     @Test
-    public void testReplsetClientLock() throws SlockException {
+    public void testReplsetClientLock() throws Exception {
         SlockReplsetClient client = new SlockReplsetClient(new String[]{clientHost + ":" + clinetPort});
         client.open();
         try {
             Lock lock = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock.acquire();
             lock.release();
+
+            try (AutoCloseable ignored = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5).with()) {
+                System.out.println("lock2");
+            }
 
             Lock lock1 = client.newLock("test2".getBytes(StandardCharsets.UTF_8), 5, 5);
             lock1.setCount((short) 10);

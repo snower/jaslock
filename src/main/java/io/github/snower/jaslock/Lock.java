@@ -338,4 +338,9 @@ public class Lock extends AbstractExecution {
     public void releaseHeadRetoLockWait(LockData lockData, Consumer<CallbackCommandResult> callback) throws SlockException {
         release((byte) (ICommand.UNLOCK_FLAG_UNLOCK_FIRST_LOCK_WHEN_UNLOCKED | ICommand.UNLOCK_FLAG_SUCCED_TO_LOCK_WAIT), lockData, callback);
     }
+
+    public AutoCloseable with() throws SlockException {
+        acquire();
+        return this::release;
+    }
 }

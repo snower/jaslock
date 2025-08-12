@@ -142,4 +142,9 @@ public class TreeLock extends AbstractExecution {
             return lock.getLockId();
         }
     }
+
+    public AutoCloseable with() throws SlockException {
+        acquire();
+        return this::release;
+    }
 }
