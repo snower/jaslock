@@ -6,7 +6,6 @@ import io.github.snower.jaslock.exceptions.LockTimeoutException;
 import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.function.Consumer;
 
 public class TokenBucketFlow extends AbstractExecution {
@@ -53,7 +52,7 @@ public class TokenBucketFlow extends AbstractExecution {
         }
 
         synchronized (this) {
-            long now = new Date().getTime() / 1000L;
+            long now = System.currentTimeMillis() / 1000L;
             int expried = (int) (((long)Math.ceil(period)) - (now % ((long) Math.ceil((period)))));
             expried = expried | (this.expried & 0xffff0000);
             flowLock = new Lock(database, lockKey, LockCommand.genLockId(), 0, expried, count, (byte) 0);
@@ -91,7 +90,7 @@ public class TokenBucketFlow extends AbstractExecution {
         }
 
         synchronized (this) {
-            long now = new Date().getTime() / 1000L;
+            long now = System.currentTimeMillis() / 1000L;
             int expried = (int) (((long)Math.ceil(period)) - (now % ((long) Math.ceil((period)))));
             expried = expried | (this.expried & 0xffff0000);
             flowLock = new Lock(database, lockKey, LockCommand.genLockId(), 0, expried, count, (byte) 0);

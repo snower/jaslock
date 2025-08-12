@@ -2,12 +2,12 @@ package io.github.snower.jaslock.commands;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InitCommand extends Command {
     private static final AtomicInteger clientIdIndex = new AtomicInteger(0);
+    private static final Random random = new Random();
 
     protected byte[] clientId;
 
@@ -48,8 +48,8 @@ public class InitCommand extends Command {
 
     public static byte[] genClientId() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        long timestamp = (new Date()).getTime();
-        long randNumber = (new Random()).nextLong();
+        long timestamp = System.currentTimeMillis();
+        long randNumber = random.nextLong();
         long ri = ((long) clientIdIndex.addAndGet(1)) & 0x7fffffffL;
         byteArrayOutputStream.write((byte) (timestamp >> 40) & 0xff);
         byteArrayOutputStream.write((byte) (timestamp >> 32) & 0xff);

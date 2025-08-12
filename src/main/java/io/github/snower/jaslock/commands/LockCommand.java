@@ -6,7 +6,6 @@ import io.github.snower.jaslock.exceptions.SlockException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,6 +13,7 @@ import java.util.function.Consumer;
 
 public class LockCommand extends Command {
     private static final AtomicInteger lockIdIndex = new AtomicInteger(0);
+    private static final Random random = new Random();
 
     protected byte flag;
     protected byte dbId;
@@ -155,8 +155,8 @@ public class LockCommand extends Command {
 
     public static byte[] genLockId() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        long timestamp = (new Date()).getTime();
-        long randNumber = (new Random()).nextLong();
+        long timestamp = System.currentTimeMillis();
+        long randNumber = random.nextLong();
         long ri = ((long) lockIdIndex.addAndGet(1)) & 0x7fffffffL;
         byteArrayOutputStream.write((byte) (timestamp >> 40) & 0xff);
         byteArrayOutputStream.write((byte) (timestamp >> 32) & 0xff);

@@ -23,13 +23,13 @@ public class CallbackExecutorManager {
 
     public CallbackExecutorManager(ExecutorOption executorOption) {
         this.executorOption = executorOption;
-        this.currentTimeoutAt = (new Date()).getTime() / 1000;
+        this.currentTimeoutAt = System.currentTimeMillis() / 1000;
         this.isRuning = false;
     }
 
     public CallbackExecutorManager(ExecutorService callbackExecutor) {
         this.executorOption = ExecutorOption.DefaultOption;
-        this.currentTimeoutAt = (new Date()).getTime() / 1000;
+        this.currentTimeoutAt = System.currentTimeMillis() / 1000;
         this.isRuning = false;
         this.callbackExecutor = callbackExecutor;
         this.isExternCallbackExecutor = true;
@@ -37,7 +37,7 @@ public class CallbackExecutorManager {
 
     public CallbackExecutorManager(ScheduledExecutorService timeoutScheduledExecutor) {
         this.executorOption = ExecutorOption.DefaultOption;
-        this.currentTimeoutAt = (new Date()).getTime() / 1000;
+        this.currentTimeoutAt = System.currentTimeMillis() / 1000;
         this.isRuning = false;
         this.timeoutScheduledExecutor = timeoutScheduledExecutor;
         this.isExternTimeoutExecutor = true;
@@ -45,7 +45,7 @@ public class CallbackExecutorManager {
 
     public CallbackExecutorManager(ExecutorService callbackExecutor, ScheduledExecutorService timeoutScheduledExecutor) {
         this.executorOption = ExecutorOption.DefaultOption;
-        this.currentTimeoutAt = (new Date()).getTime() / 1000;
+        this.currentTimeoutAt = System.currentTimeMillis() / 1000;
         this.isRuning = false;
         this.callbackExecutor = callbackExecutor;
         this.isExternCallbackExecutor = true;
@@ -69,7 +69,7 @@ public class CallbackExecutorManager {
         timeoutQueues = new ConcurrentHashMap<>();
 
         timeoutScheduledExecutor.scheduleAtFixedRate(() -> {
-            long now = (new Date()).getTime() / 1000;
+            long now = System.currentTimeMillis() / 1000;
             while (currentTimeoutAt <  now) {
                 List<CallbackCommand> timeoutAtQueues = timeoutQueues.remove(currentTimeoutAt);
                 if (timeoutAtQueues != null) {
@@ -138,7 +138,7 @@ public class CallbackExecutorManager {
             throw new ClientAsyncCallbackWaitedException("Timed out");
         }
 
-        callbackCommand.setTimeoutAt(Math.max((new Date()).getTime() / 1000 + timeout, currentTimeoutAt + 1));
+        callbackCommand.setTimeoutAt(Math.max(System.currentTimeMillis() / 1000 + timeout, currentTimeoutAt + 1));
         List<CallbackCommand> timeoutAtQueues = timeoutQueues.get(callbackCommand.getTimeoutAt());
         if (timeoutAtQueues == null) {
             synchronized (this) {
