@@ -1,6 +1,7 @@
 package io.github.snower.jaslock;
 
 import io.github.snower.jaslock.callback.CallbackFuture;
+import io.github.snower.jaslock.commands.CapacityByteArrayOutputStream;
 import io.github.snower.jaslock.commands.ICommand;
 import io.github.snower.jaslock.commands.LockCommand;
 import io.github.snower.jaslock.commands.LockCommandResult;
@@ -320,7 +321,7 @@ public class GroupEvent extends AbstractExecution {
     }
 
     private byte[] encodeLockId(long clientId, long versionId) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(16);
         byteArrayOutputStream.write((byte) (versionId & 0xff));
         byteArrayOutputStream.write((byte) ((versionId >> 8) & 0xff));
         byteArrayOutputStream.write((byte) ((versionId >> 16) & 0xff));

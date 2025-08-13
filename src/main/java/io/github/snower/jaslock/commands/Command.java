@@ -68,7 +68,7 @@ public class Command implements ICommand {
 
     @Override
     public byte[] dumpCommand() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(64);
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
@@ -87,7 +87,7 @@ public class Command implements ICommand {
     }
 
     public static byte[] genRequestId() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(16);
         long timestamp = System.currentTimeMillis();
         long randNumber = random.nextLong();
         long ri = ((long) requestIdIndex.addAndGet(1)) & 0x7fffffffL;

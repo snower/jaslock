@@ -36,7 +36,7 @@ public class InitCommand extends Command {
 
     @Override
     public byte[] dumpCommand() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(64);
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
@@ -47,7 +47,7 @@ public class InitCommand extends Command {
     }
 
     public static byte[] genClientId() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(16);
         long timestamp = System.currentTimeMillis();
         long randNumber = random.nextLong();
         long ri = ((long) clientIdIndex.addAndGet(1)) & 0x7fffffffL;

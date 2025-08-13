@@ -22,7 +22,7 @@ public class PingCommandResult extends CommandResult {
 
     @Override
     public byte[] dumpCommand() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(64);
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);

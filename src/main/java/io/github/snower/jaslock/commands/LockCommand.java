@@ -116,7 +116,7 @@ public class LockCommand extends Command {
 
     @Override
     public byte[] dumpCommand() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(64);
         byteArrayOutputStream.write(MAGIC);
         byteArrayOutputStream.write(VERSION);
         byteArrayOutputStream.write(commandType);
@@ -154,7 +154,7 @@ public class LockCommand extends Command {
     }
 
     public static byte[] genLockId() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new CapacityByteArrayOutputStream(16);
         long timestamp = System.currentTimeMillis();
         long randNumber = random.nextLong();
         long ri = ((long) lockIdIndex.addAndGet(1)) & 0x7fffffffL;
