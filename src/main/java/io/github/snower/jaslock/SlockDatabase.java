@@ -1,5 +1,7 @@
 package io.github.snower.jaslock;
 
+import io.github.snower.jaslock.exceptions.ClientClosedException;
+
 import java.nio.charset.StandardCharsets;
 
 public class SlockDatabase {
@@ -27,7 +29,10 @@ public class SlockDatabase {
         client = null;
     }
 
-    public ISlockClient getClient() {
+    public ISlockClient getClient() throws ClientClosedException {
+        if (client == null) {
+            throw new ClientClosedException("database close");
+        }
         return client;
     }
 
