@@ -161,7 +161,27 @@ public class SlockReplsetClient implements ISlockClient {
     @Override
     public void close() {
         closed = true;
+        closePendingRequestCommands();
         try {
+            for (SlockClient.BytesKey requestId : requests.keySet().toArray(new SlockClient.BytesKey[0])) {
+                Command command = requests.remove(requestId);
+                if (command == null) {
+                    continue;
+                }
+                if (command.getRetryType() == 2) {
+                    removePendingRequestCommand(command);
+                }
+                command.commandResult = null;
+                command.wakeupWaiter();
+            }
+
+            for (int i = 0; i < databases.length; i++) {
+                if (databases[i] != null) {
+                    databases[i].close();
+                }
+                databases[i] = null;
+            }
+
             for (SlockClient client : clients) {
                 try {
                     client.close();
@@ -173,6 +193,12 @@ public class SlockReplsetClient implements ISlockClient {
                 callbackExecutorManager.stop();
             }
             callbackExecutorManager = null;
+        }
+    }
+
+    protected boolean hasLivedClient() {
+        synchronized (this) {
+            return !livedClients.isEmpty();
         }
     }
 
@@ -248,6 +274,17 @@ public class SlockReplsetClient implements ISlockClient {
                 command.exception = e;
                 command.wakeupWaiter();
             }
+        }
+    }
+
+    protected void closePendingRequestCommands() {
+        while (!this.pendingRequests.isEmpty()) {
+            Command command = this.pendingRequests.poll();
+            if (command == null) break;
+
+            command.setRetryType(3);
+            command.exception = new ClientClosedException("client closed");
+            command.wakeupWaiter();
         }
     }
 

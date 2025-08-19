@@ -193,23 +193,27 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         synchronized (this) {
-            for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
-                Command command = requests.remove(requestId);
-                if(command == null) {
-                    continue;
+            if (replsetClient == null || !replsetClient.hasLivedClient()) {
+                for (BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                    Command command = requests.remove(requestId);
+                    if (command == null) {
+                        continue;
+                    }
+                    if (replsetClient != null && command.getRetryType() == 2) {
+                        replsetClient.removePendingRequestCommand(command);
+                    }
+                    command.commandResult = null;
+                    command.wakeupWaiter();
                 }
-                if (replsetClient != null && command.getRetryType() == 2) {
-                    replsetClient.removePendingRequestCommand(command);
-                }
-                command.commandResult = null;
-                command.wakeupWaiter();
             }
 
-            for(int i = 0; i < databases.length; i++) {
-                if(databases[i] != null ) {
-                    databases[i].close();
+            if (replsetClient == null) {
+                for (int i = 0; i < databases.length; i++) {
+                    if (databases[i] != null) {
+                        databases[i].close();
+                    }
+                    databases[i] = null;
                 }
-                databases[i] = null;
             }
         }
 
@@ -331,16 +335,18 @@ public class SlockClient implements Runnable, ISlockClient {
 
     protected void reconnect() {
         synchronized (this) {
-            for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
-                Command command = requests.remove(requestId);
-                if(command == null) {
-                    continue;
+            if (replsetClient == null || !replsetClient.hasLivedClient()) {
+                for (BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                    Command command = requests.remove(requestId);
+                    if (command == null) {
+                        continue;
+                    }
+                    if (replsetClient != null && command.getRetryType() == 2) {
+                        replsetClient.removePendingRequestCommand(command);
+                    }
+                    command.commandResult = null;
+                    command.wakeupWaiter();
                 }
-                if (replsetClient != null && command.getRetryType() == 2) {
-                    replsetClient.removePendingRequestCommand(command);
-                }
-                command.commandResult = null;
-                command.wakeupWaiter();
             }
         }
 
@@ -402,16 +408,18 @@ public class SlockClient implements Runnable, ISlockClient {
 
                 if ((initCommandResult.getInitType() & ICommand.INIT_TYPE_FLAG_HA_CLIENT) == 0) {
                     synchronized (this) {
-                        for(BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
-                            Command command = requests.remove(requestId);
-                            if(command == null) {
-                                continue;
+                        if (replsetClient == null) {
+                            for (BytesKey requestId : requests.keySet().toArray(new BytesKey[0])) {
+                                Command command = requests.remove(requestId);
+                                if (command == null) {
+                                    continue;
+                                }
+                                if (replsetClient != null && command.getRetryType() == 2) {
+                                    replsetClient.removePendingRequestCommand(command);
+                                }
+                                command.commandResult = null;
+                                command.wakeupWaiter();
                             }
-                            if (replsetClient != null && command.getRetryType() == 2) {
-                                replsetClient.removePendingRequestCommand(command);
-                            }
-                            command.commandResult = null;
-                            command.wakeupWaiter();
                         }
                     }
                 }
@@ -476,27 +484,30 @@ public class SlockClient implements Runnable, ISlockClient {
         reentrantLock.lock();
         try {
             if(outputStream == null) {
-                throw new ClientUnconnectException("client not connected " + host + ":" + port);
-            }
-
-            requests.put(requestId, command);
-            try {
-                outputStream.write(buf);
-                byte[] extraData = command.getExtraData();
-                if (extraData != null) {
-                    outputStream.write(extraData);
+                if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                    throw new ClientUnconnectException("client not connected " + host + ":" + port);
                 }
-            } catch (IOException e) {
-                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
-                    requests.remove(requestId);
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
-                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
-                } else {
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
+                requests.put(requestId, command);
+            } else {
+                requests.put(requestId, command);
+                try {
+                    outputStream.write(buf);
+                    byte[] extraData = command.getExtraData();
+                    if (extraData != null) {
+                        outputStream.write(extraData);
+                    }
+                } catch (IOException e) {
+                    if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                        requests.remove(requestId);
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                        throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                    } else {
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                    }
                 }
             }
         } finally {
@@ -545,28 +556,31 @@ public class SlockClient implements Runnable, ISlockClient {
         reentrantLock.lock();
         try {
             if(outputStream == null) {
-                throw new ClientUnconnectException("client not connected " + host + ":" + port);
-            }
-
-            requests.put(requestId, command);
-            try {
-                outputStream.write(buf);
-                byte[] extraData = command.getExtraData();
-                if (extraData != null) {
-                    outputStream.write(extraData);
+                if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                    throw new ClientUnconnectException("client not connected " + host + ":" + port);
                 }
-            } catch (IOException e) {
-                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
-                    requests.remove(requestId);
-                    callbackCommand.close();
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
-                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
-                } else {
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
+                requests.put(requestId, command);
+            } else {
+                requests.put(requestId, command);
+                try {
+                    outputStream.write(buf);
+                    byte[] extraData = command.getExtraData();
+                    if (extraData != null) {
+                        outputStream.write(extraData);
+                    }
+                } catch (IOException e) {
+                    if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                        requests.remove(requestId);
+                        callbackCommand.close();
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                        throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                    } else {
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                    }
                 }
             }
         } finally {
@@ -584,24 +598,27 @@ public class SlockClient implements Runnable, ISlockClient {
         reentrantLock.lock();
         try {
             if(outputStream == null) {
-                throw new ClientUnconnectException("client not connected " + host + ":" + port);
-            }
-            try {
-                outputStream.write(buf);
-                byte[] extraData = command.getExtraData();
-                if (extraData != null) {
-                    outputStream.write(extraData);
+                if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                    throw new ClientUnconnectException("client not connected " + host + ":" + port);
                 }
-            } catch (IOException e) {
-                if (replsetClient == null || command.getRetryType() != 0 && !replsetClient.doPendingRequestCommand(this, command)) {
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
-                    throw new ClientOutputStreamException("Client writes data abnormally: " + e);
-                } else {
-                    try {
-                        socket.close();
-                    } catch (IOException ignored) {}
+            } else {
+                try {
+                    outputStream.write(buf);
+                    byte[] extraData = command.getExtraData();
+                    if (extraData != null) {
+                        outputStream.write(extraData);
+                    }
+                } catch (IOException e) {
+                    if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                        throw new ClientOutputStreamException("Client writes data abnormally: " + e);
+                    } else {
+                        try {
+                            socket.close();
+                        } catch (IOException ignored) {}
+                    }
                 }
             }
         } finally {
