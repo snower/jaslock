@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class Command implements ICommand {
+    protected static final Random random = new Random();
     private static final AtomicInteger requestIdIndex = new AtomicInteger(0);
-    private static final Random random = new Random();
 
     protected byte magic;
     protected byte version;

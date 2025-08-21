@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class InitCommand extends Command {
     private static final AtomicInteger clientIdIndex = new AtomicInteger(0);
-    private static final Random random = new Random();
 
     protected byte[] clientId;
 

@@ -13,7 +13,6 @@ import java.util.function.Consumer;
 
 public class LockCommand extends Command {
     private static final AtomicInteger lockIdIndex = new AtomicInteger(0);
-    private static final Random random = new Random();
 
     protected byte flag;
     protected byte dbId;
