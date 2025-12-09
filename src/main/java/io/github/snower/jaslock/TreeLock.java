@@ -32,11 +32,11 @@ public class TreeLock extends AbstractExecution {
     }
 
     public TreeLeafLock newLeafLock() {
-        return new TreeLeafLock(database, this, new Lock(database, lockKey, LockCommand.genLockId(), timeout, expried, (short) 0xffff, (byte) 0));
+        return new TreeLeafLock(database, this, new Lock(database, lockKey, LockCommand.genLockId(), timeout|(ICommand.TIMEOUT_FLAG_RCOUNT_IS_PRIORITY<<16), expried, (short) 0xffff, (byte) 1));
     }
 
     public TreeLeafLock loadLeafLock(byte[] lockId) {
-        return new TreeLeafLock(database, this, new Lock(database, lockKey, lockId, timeout, expried, (short) 0xffff, (byte) 0));
+        return new TreeLeafLock(database, this, new Lock(database, lockKey, lockId, timeout|(ICommand.TIMEOUT_FLAG_RCOUNT_IS_PRIORITY<<16), expried, (short) 0xffff, (byte) 1));
     }
 
     public TreeLock newChild() {
