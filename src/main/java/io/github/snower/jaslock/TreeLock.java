@@ -96,10 +96,10 @@ public class TreeLock extends AbstractExecution {
             Lock parentCheckLock = null;
 
             if (!treeLock.isRoot()) {
-                childCheckLock = new Lock(database, treeLock.getLockKey(), treeLock.getParentKey(), 0, expried, (short) 0xffff, (byte) 0);
+                childCheckLock = new Lock(database, treeLock.getLockKey(), treeLock.getParentKey(), ICommand.TIMEOUT_FLAG_RCOUNT_IS_PRIORITY<<16, expried, (short) 0xffff, (byte) 1);
                 try {
                     childCheckLock.acquire(ICommand.LOCK_FLAG_LOCK_TREE_LOCK);
-                    parentCheckLock = new Lock(database, treeLock.getParentKey(), treeLock.getLockKey(), 0, expried, (short) 0xffff, (byte) 0);
+                    parentCheckLock = new Lock(database, treeLock.getParentKey(), treeLock.getLockKey(), ICommand.TIMEOUT_FLAG_RCOUNT_IS_PRIORITY<<16, expried, (short) 0xffff, (byte) 1);
                     try {
                         parentCheckLock.acquire();
                     } catch (LockLockedException ignored) {
