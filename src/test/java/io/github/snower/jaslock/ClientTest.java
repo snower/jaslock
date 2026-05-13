@@ -1013,7 +1013,7 @@ public class ClientTest
 
     @Test
     public void testBenchmark() throws Exception {
-        int totalCount = 400000;
+        int totalCount = 1000000;
 
         SlockClient client1 = new SlockClient(clientHost, clinetPort);
         client1.open();
@@ -1023,8 +1023,9 @@ public class ClientTest
             List<Thread> threads = new ArrayList<>();
             long startMs = System.currentTimeMillis();
             for (int i = 0; i < 256; i++) {
+                int finalTotalCount = totalCount;
                 Thread thread = new Thread(() -> {
-                    while (count.get() < totalCount) {
+                    while (count.get() < finalTotalCount) {
                         Lock lock = client1.newLock("benchmark" + count.get(), 5, 10);
                         try {
                             lock.acquire(count.get() % 2 == 0 ? new LockSetData(new byte[random.nextInt(255) + 1]) : null);
@@ -1052,6 +1053,7 @@ public class ClientTest
             client1.close();
         }
 
+        totalCount = 500000;
         SlockClient client2 = new SlockClient(clientHost, clinetPort);
         client2.enableAsyncCallback(new ExecutorOption(256, 256, 65536, 120, TimeUnit.SECONDS));
         client2.open();
