@@ -70,10 +70,10 @@ public class SlockClient implements Runnable, ISlockClient {
         public void writeFlush(byte[] b, int off, int len) throws IOException {
             if (count == 0) {
                 synchronized (this) {
-                    out.write(buf, 0, buf.length);
+                    out.write(b, off, len);
                 }
             } else {
-                write(buf, 0, buf.length);
+                write(b, off, len);
                 synchronized (this) {
                     if (count > 0) {
                         out.write(buf, 0, count);
