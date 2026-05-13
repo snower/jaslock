@@ -1013,66 +1013,68 @@ public class ClientTest
 
     @Test
     public void testBenchmark() throws Exception {
-        int totalCount = 1000000;
+        for (int benchmark = 0; benchmark < 2; benchmark++) {
+            int totalCount = 1000000;
 
-        SlockClient client1 = new SlockClient(clientHost, clinetPort);
-        client1.open();
-        try {
-            AtomicReference<Exception> exception = new AtomicReference<>(null);
-            AtomicInteger count = new AtomicInteger(0);
-            List<Thread> threads = new ArrayList<>();
-            long startMs = System.currentTimeMillis();
-            for (int i = 0; i < 256; i++) {
-                int finalTotalCount = totalCount;
-                Thread thread = new Thread(() -> {
-                    while (count.get() < finalTotalCount) {
-                        Lock lock = client1.newLock("benchmark" + count.get(), 5, 10);
-                        try {
-                            lock.acquire(count.get() % 2 == 0 ? new LockSetData(new byte[random.nextInt(255) + 1]) : null);
-                            count.incrementAndGet();
-                            lock.release();
-                            count.incrementAndGet();
-                        } catch (Exception e) {
-                            exception.set(e);
+            SlockClient client1 = new SlockClient(clientHost, clinetPort);
+            client1.open();
+            try {
+                AtomicReference<Exception> exception = new AtomicReference<>(null);
+                AtomicInteger count = new AtomicInteger(0);
+                List<Thread> threads = new ArrayList<>();
+                long startMs = System.currentTimeMillis();
+                for (int i = 0; i < 256; i++) {
+                    int finalTotalCount = totalCount;
+                    Thread thread = new Thread(() -> {
+                        while (count.get() < finalTotalCount) {
+                            Lock lock = client1.newLock("benchmark" + count.get(), 5, 10);
+                            try {
+                                lock.acquire(count.get() % 2 == 0 ? new LockSetData(new byte[random.nextInt(255) + 1]) : null);
+                                count.incrementAndGet();
+                                lock.release();
+                                count.incrementAndGet();
+                            } catch (Exception e) {
+                                exception.set(e);
+                            }
                         }
-                    }
-                });
-                thread.setDaemon(true);
-                thread.start();
-                threads.add(thread);
+                    });
+                    thread.setDaemon(true);
+                    thread.start();
+                    threads.add(thread);
+                }
+                for (Thread thread : threads) {
+                    thread.join();
+                }
+                long endMs = System.currentTimeMillis();
+                System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+                if (exception.get() != null) {
+                    throw exception.get();
+                }
+            } finally {
+                client1.close();
             }
-            for (Thread thread : threads) {
-                thread.join();
-            }
-            long endMs = System.currentTimeMillis();
-            System.out.println("Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) totalCount) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
-            if (exception.get() != null) {
-                throw exception.get();
-            }
-        } finally {
-            client1.close();
-        }
 
-        totalCount = 500000;
-        SlockClient client2 = new SlockClient(clientHost, clinetPort);
-        client2.enableAsyncCallback(new ExecutorOption(256, 256, 65536, 120, TimeUnit.SECONDS));
-        client2.open();
-        try {
-            CountDownLatch countDownLatch = new CountDownLatch(256);
-            AtomicReference<Exception> exception = new AtomicReference<>(null);
-            AtomicInteger count = new AtomicInteger(0);
-            long startMs = System.currentTimeMillis();
-            for (int i = 0; i < 256; i++) {
-                runBenchmarkAsyncLock(client2, countDownLatch, totalCount, count, exception);
+            totalCount = 500000;
+            SlockClient client2 = new SlockClient(clientHost, clinetPort);
+            client2.enableAsyncCallback(new ExecutorOption(256, 256, 65536, 120, TimeUnit.SECONDS));
+            client2.open();
+            try {
+                CountDownLatch countDownLatch = new CountDownLatch(256);
+                AtomicReference<Exception> exception = new AtomicReference<>(null);
+                AtomicInteger count = new AtomicInteger(0);
+                long startMs = System.currentTimeMillis();
+                for (int i = 0; i < 256; i++) {
+                    runBenchmarkAsyncLock(client2, countDownLatch, totalCount, count, exception);
+                }
+                countDownLatch.await();
+                long endMs = System.currentTimeMillis();
+                System.out.println("Async Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) count.get()) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
+                if (exception.get() != null) {
+                    throw exception.get();
+                }
+            } finally {
+                client2.close();
             }
-            countDownLatch.await();
-            long endMs = System.currentTimeMillis();
-            System.out.println("Async Benchmark " + totalCount + " Count Lock and Unlock: " + count.get() + " " + (((double) count.get()) / ((endMs - startMs) / 1000d)) + "r/s " + (endMs - startMs) + "ms");
-            if (exception.get() != null) {
-                throw exception.get();
-            }
-        } finally {
-            client2.close();
         }
     }
 
