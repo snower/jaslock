@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class SlockClient implements Runnable, ISlockClient {
@@ -41,6 +42,56 @@ public class SlockClient implements Runnable, ISlockClient {
         }
     }
 
+    protected static final class BufferedInputStream extends java.io.BufferedInputStream {
+
+        public BufferedInputStream(InputStream in) {
+            super(in, 4096);
+        }
+
+        public BufferedInputStream(InputStream in, int size) {
+            super(in, size);
+        }
+    }
+
+    protected static final class BufferedOutputStream extends java.io.BufferedOutputStream {
+
+        public BufferedOutputStream(OutputStream out) {
+            super(out, 4096);
+        }
+
+        public BufferedOutputStream(OutputStream out, int size) {
+            super(out, size);
+        }
+
+        public void writeFlush(byte[] b) throws IOException {
+            writeFlush(b, 0, b.length);
+        }
+
+        public void writeFlush(byte[] b, int off, int len) throws IOException {
+            if (count == 0) {
+                synchronized (this) {
+                    out.write(buf, 0, buf.length);
+                }
+            } else {
+                write(buf, 0, buf.length);
+                synchronized (this) {
+                    if (count > 0) {
+                        out.write(buf, 0, count);
+                        count = 0;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public synchronized void flush() throws IOException {
+            if (count > 0) {
+                out.write(buf, 0, count);
+                count = 0;
+            }
+        }
+    }
+
     private final String host;
     private final int port;
     private short defaultTimeoutFlag;
@@ -50,13 +101,14 @@ public class SlockClient implements Runnable, ISlockClient {
     private byte initType;
     private Thread thread;
     private Socket socket;
-    private InputStream inputStream;
-    private OutputStream outputStream;
+    private BufferedInputStream inputStream;
+    private BufferedOutputStream outputStream;
     private SlockDatabase[] databases;
     private ConcurrentHashMap<BytesKey, Command> requests;
     private SlockReplsetClient replsetClient;
     private CallbackExecutorManager callbackExecutorManager;
     private final java.util.concurrent.locks.ReentrantLock reentrantLock = new java.util.concurrent.locks.ReentrantLock();
+    private final AtomicInteger pendingWriteCount = new AtomicInteger(0);
 
     public SlockClient() {
         this("127.0.0.1", 5658);
@@ -320,8 +372,8 @@ public class SlockClient implements Runnable, ISlockClient {
         socket.setTcpNoDelay(true);
         socket.connect(new InetSocketAddress(host, port), 5000);
         try {
-            inputStream = socket.getInputStream();
-            outputStream = socket.getOutputStream();
+            inputStream = new BufferedInputStream(socket.getInputStream());
+            outputStream = new BufferedOutputStream(socket.getOutputStream());
         } catch (IOException e) {
             closeSocket();
             throw e;
@@ -390,7 +442,7 @@ public class SlockClient implements Runnable, ISlockClient {
         InitCommand initCommand = new InitCommand(clientId);
         byte[] buf = initCommand.dumpCommand();
         try {
-            outputStream.write(buf);
+            outputStream.writeFlush(buf);
         } catch (IOException e) {
             closeSocket();
             throw e;
@@ -481,7 +533,9 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         BytesKey requestId = new BytesKey(command.getRequestId());
+        pendingWriteCount.incrementAndGet();
         reentrantLock.lock();
+        int pwc = pendingWriteCount.decrementAndGet();
         try {
             if(outputStream == null) {
                 if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
@@ -491,10 +545,20 @@ public class SlockClient implements Runnable, ISlockClient {
             } else {
                 requests.put(requestId, command);
                 try {
-                    outputStream.write(buf);
                     byte[] extraData = command.getExtraData();
-                    if (extraData != null) {
-                        outputStream.write(extraData);
+                    if (pwc == 0) {
+                        if (extraData == null) {
+                            outputStream.writeFlush(buf);
+                        } else {
+                            outputStream.write(buf);
+                            outputStream.write(extraData);
+                            outputStream.flush();
+                        }
+                    } else {
+                        outputStream.write(buf);
+                        if (extraData != null) {
+                            outputStream.write(extraData);
+                        }
                     }
                 } catch (IOException e) {
                     if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
@@ -553,7 +617,9 @@ public class SlockClient implements Runnable, ISlockClient {
             callback.accept(callbackCommandResult);
         });
 
+        pendingWriteCount.incrementAndGet();
         reentrantLock.lock();
+        int pwc = pendingWriteCount.decrementAndGet();
         try {
             if(outputStream == null) {
                 if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
@@ -563,10 +629,20 @@ public class SlockClient implements Runnable, ISlockClient {
             } else {
                 requests.put(requestId, command);
                 try {
-                    outputStream.write(buf);
                     byte[] extraData = command.getExtraData();
-                    if (extraData != null) {
-                        outputStream.write(extraData);
+                    if (pwc == 0) {
+                        if (extraData == null) {
+                            outputStream.writeFlush(buf);
+                        } else {
+                            outputStream.write(buf);
+                            outputStream.write(extraData);
+                            outputStream.flush();
+                        }
+                    } else {
+                        outputStream.write(buf);
+                        if (extraData != null) {
+                            outputStream.write(extraData);
+                        }
                     }
                 } catch (IOException e) {
                     if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
@@ -595,7 +671,9 @@ public class SlockClient implements Runnable, ISlockClient {
         }
 
         byte[] buf = command.dumpCommand();
+        pendingWriteCount.incrementAndGet();
         reentrantLock.lock();
+        int pwc = pendingWriteCount.decrementAndGet();
         try {
             if(outputStream == null) {
                 if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
@@ -603,10 +681,20 @@ public class SlockClient implements Runnable, ISlockClient {
                 }
             } else {
                 try {
-                    outputStream.write(buf);
                     byte[] extraData = command.getExtraData();
-                    if (extraData != null) {
-                        outputStream.write(extraData);
+                    if (pwc == 0) {
+                        if (extraData == null) {
+                            outputStream.writeFlush(buf);
+                        } else {
+                            outputStream.write(buf);
+                            outputStream.write(extraData);
+                            outputStream.flush();
+                        }
+                    } else {
+                        outputStream.write(buf);
+                        if (extraData != null) {
+                            outputStream.write(extraData);
+                        }
                     }
                 } catch (IOException e) {
                     if (replsetClient == null || command.getRetryType() != 0 || !replsetClient.doPendingRequestCommand(this, command)) {
